@@ -42,6 +42,7 @@ _state = {
     "finished": [],             # bars, oldest first
     "lastFill": 0,
     "fills": 0,
+    "seedUntil": 0,          # live fills at or before this ms are already in the seed
 }
 
 
@@ -63,13 +64,49 @@ def on_trade(price, qty, buyer_maker, ms):
             _state["window"] = window
             _state["trades"] = []
 
-        _state["trades"].append((price, qty, buyer_maker, ms))
+        # drop the overlap: anything at or before the seeder's newest fill is already in
+        if not (ms <= _state["seedUntil"] and window == _state["window"]):
+            _state["trades"].append((price, qty, buyer_maker, ms))
         _state["lastFill"] = ms
         _state["fills"] += 1
 
     if closed:
         print(f"bar closed  {time.strftime('%H:%M', time.localtime(closed['t'] / 1000))}  "
               f"delta {closed['delta']:+.2f}  volume {closed['volume']:.2f}", flush=True)
+
+
+def seed_current():
+    """
+    Fill in the part of the running window that happened before the socket opened.
+
+    Runs AFTER the tape is connected, and merges instead of replacing: seeded fills
+    first, then only the live fills newer than the last seeded one. That closes both
+    gaps - no missed seconds, no double count.
+    """
+    now = int(time.time() * 1000)
+    start = _window_of(now)
+    url = ("https://fapi.binance.com/fapi/v1/aggTrades"
+           f"?symbol={tape.SYMBOL}&startTime={start}&endTime={now}&limit=1000")
+    try:
+        with urllib.request.urlopen(url, timeout=15) as response:
+            seeded = json.loads(response.read())
+    except Exception:
+        return 0
+
+    if not seeded:
+        return 0
+
+    seeded_trades = [(float(t["p"]), float(t["q"]), bool(t["m"]), int(t["T"])) for t in seeded]
+    newest = max(trade[3] for trade in seeded_trades)
+
+    with _lock:
+        live = [trade for trade in _state["trades"] if trade[3] > newest]
+        _state["window"] = start
+        _state["trades"] = seeded_trades + live
+        _state["seedUntil"] = newest
+
+    print(f"seeded {len(seeded_trades)} fills, kept {len(live)} live", flush=True)
+    return len(seeded_trades)
 
 
 def _verify(bar):
@@ -228,5 +265,7 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     backfill()
     threading.Thread(target=run_tape, daemon=True).start()
+    time.sleep(0.6)          # let the socket open first, then backfill behind it
+    seed_current()
     print(f"FOOTPRINT  http://127.0.0.1:{PORT}  (/api/footprint + app)", flush=True)
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

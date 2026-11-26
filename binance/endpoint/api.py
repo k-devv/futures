@@ -78,6 +78,7 @@ PRIVATE = {
 
 # ------------------------------------------------------------------ state
 _clock_offset = 0        # ms; Binance time minus ours, fixed once at start
+_weight_1m = 0           # the last X-MBX-USED-WEIGHT-1M Binance reported
 _filters = {}            # symbol -> {qty_step, price_tick, min_qty}
 _filters_at = 0
 
@@ -144,6 +145,8 @@ def _request(base, path, params, method, signed):
     request = urllib.request.Request(url, method=method, headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=15) as response:
+            global _weight_1m
+            _weight_1m = int(response.headers.get("X-MBX-USED-WEIGHT-1M") or 0)
             body = response.read()
             return json.loads(body) if body else {}
     except urllib.error.HTTPError as error:
@@ -191,6 +194,7 @@ def snapshot():
         "taker_ratio_5m": float(taker["buySellRatio"]),
         "book_imbalance": round((bids - asks) / (bids + asks), 3),
         "tape_retail_share": round(retail / volume, 3) if volume else 0,
+        "weight_1m": _weight_1m,
     }
 
 

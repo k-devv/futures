@@ -1,4 +1,5 @@
-﻿# never commit keys
+# never commit keys
+binance/keys.json
 secrets/
 data/keys.json
 *.jsonl

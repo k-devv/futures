@@ -123,17 +123,42 @@ def _bar_from(trades, window_start):
     return bar
 
 
-def _close_bar(window_start):
+def _store(bar):
+    with _lock:
+        _state["finished"] = sorted(_state["finished"] + [bar], key=lambda item: item["t"])[-KEEP:]
+
+
+def _close_bar(window_start, attempts=3):
     """A window ended: the finished bar is Binance's record, not ours."""
-    bar = _bar_from(fetch_agg(window_start, window_start + WINDOW_MS - 1), window_start)
-    if not bar:
-        return
+    for attempt in range(attempts):
+        bar = _bar_from(fetch_agg(window_start, window_start + WINDOW_MS - 1), window_start)
+        if bar:
+            _store(bar)
+            print(f"bar closed  {bar['time']}  delta {bar['delta']:+.2f}  volume {bar['volume']:.2f}", flush=True)
+            _fill_gaps()
+            return bar
+        time.sleep(0.5 * (attempt + 1))
+
+    print(f"bar missing {window_start}", flush=True)
+    return None
+
+
+def _fill_gaps():
+    """If a close was missed (socket silent, network error), fetch what is missing."""
+    forming = _window_of(int(time.time() * 1000))
 
     with _lock:
-        _state["finished"].append(bar)
-        _state["finished"] = _state["finished"][-KEEP:]
+        stored = {bar["t"] for bar in _state["finished"]}
+        last = max(stored) if stored else forming - WINDOW_MS
 
-    print(f"bar closed  {bar['time']}  delta {bar['delta']:+.2f}  volume {bar['volume']:.2f}", flush=True)
+    start = last + WINDOW_MS
+    while start < forming:
+        if start not in stored:
+            bar = _bar_from(fetch_agg(start, start + WINDOW_MS - 1), start)
+            if bar:
+                _store(bar)
+                print(f"gap filled  {bar['time']}  volume {bar['volume']:.2f}", flush=True)
+        start += WINDOW_MS
 
 
 def backfill():
@@ -141,7 +166,7 @@ def backfill():
     forming = _window_of(int(time.time() * 1000))
     seeded = []
 
-    for step in range(KEEP, 0, -1):
+    for step in range(KEEP, -1, -1):   # includes the window that just closed
         start = forming - (step + 1) * WINDOW_MS
         bar = _bar_from(fetch_agg(start, start + WINDOW_MS - 1), start)
         if bar:

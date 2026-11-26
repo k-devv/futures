@@ -5,12 +5,12 @@
  WHAT   : The endpoints we use, and one signed-request function that hits them.
  WHY    : Everything external lives in this folder. The UI never sees a key, and
           no other file needs to know how Binance signs a request.
- WHERE  : Futures/binance  (keys.json sits beside it, gitignored)
+ WHERE  : Futures/binance/endpoint  (keys in futures/binance/keys, gitignored)
  SCALE  : Add an endpoint to ENDPOINTS; add a wrapper below only when a caller
           needs one.
 ================================================================================
 
-    python binance/api.py account     # a quick check from the terminal
+    python binance/endpoint/api.py account     # a quick check from the terminal
 """
 
 import hashlib
@@ -22,11 +22,12 @@ import urllib.parse
 import urllib.request
 import urllib.error
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+HERE = os.path.dirname(os.path.abspath(__file__))          # binance/endpoint
+KEYS_DIR = os.path.join(os.path.dirname(HERE), "keys")   # binance/keys
 SYMBOL = "BNBUSDT"
 
 # demo first: this file refuses to sign against anything else until we say so
-with open(os.path.join(HERE, "keys.json"), encoding="utf-8") as handle:
+with open(os.path.join(KEYS_DIR, "keys.json"), encoding="utf-8") as handle:
     KEYS = json.load(handle)
 
 BASE = KEYS.get("baseUrl", "https://demo-fapi.binance.com").rstrip("/")

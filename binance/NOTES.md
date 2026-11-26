@@ -215,6 +215,57 @@ so a snapshot every 5 seconds is 60 weight a minute — safe inside 2400.
 several minutes of BNB: **0.0% RPI**. The field exists; the flow does not, for this symbol.
 `footprint.rpi_share()` reports it so we notice if that ever changes.
 
+## 5c. Round three: the history they publish, so we never rebuild it
+
+### Book depth, archived every 30 seconds
+
+```
+https://data.binance.vision/data/futures/um/daily/bookDepth/BNBUSDT/BNBUSDT-bookDepth-2026-11-25.zip
+timestamp,percentage,depth,notional
+2026-11-25 00:00:02,-5.00,23774.78,12853438.99
+```
+
+2880 snapshots a day, twelve bands each: **-5, -4, -3, -2, -1, -0.2, +0.2, +1, +2, +3, +4, +5 %**.
+That is cumulative resting depth around the mid, i.e. the same answer `depth` gives live, but for
+any day in the past. 520 KB per day.
+
+### The metrics archive is the context feed, one day at a time
+
+```
+https://data.binance.vision/data/futures/um/daily/metrics/BNBUSDT/BNBUSDT-metrics-2026-11-25.zip
+create_time,symbol,sum_open_interest,sum_open_interest_value,
+count_toptrader_long_short_ratio,sum_toptrader_long_short_ratio,
+count_long_short_ratio,sum_taker_long_short_vol_ratio
+2026-11-25 00:00:00,BNBUSDT,515695.26,283085756.02,3.04367,1.01982,2.44564,1.68784
+```
+
+288 rows a day, 11 KB. Open interest, taker ratio, and both top-trader ratios — the entire context
+layer we just wired live, available for backtests without a single request.
+
+### Klines, daily, per interval
+
+```
+https://data.binance.vision/data/futures/um/daily/klines/BNBUSDT/1m/BNBUSDT-1m-2026-11-25.zip
+```
+
+55 KB per day. Same fields as the REST kline, so the delta identity can be replayed offline.
+
+### What is NOT published
+
+```
+liquidationSnapshot   no archive found under any path we tried
+bookTicker            no archive (bookDepth only)
+takerBuySellVol       404 on USD-M - it is a COIN-M endpoint
+```
+
+### Limits worth remembering
+
+```
+historicalTrades   limit max 500, not 1000; only about the last month
+aggTrades          limit max 1000; a BNB minute is ~50 aggregated trades, so one call backfills it
+klines             1m, 1440 rows a day, free
+```
+
 ## 6. One command to see it all
 
 ```npython binance/endpoint/api.py snapshot

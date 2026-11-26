@@ -158,8 +158,10 @@ def _request(base, path, params, method, signed):
 
 def call(name, params=None, method="GET"):
     """Call a named endpoint from either table."""
-    if name in MARKET:
-        return _request(MARKET_BASE, MARKET[name], params, method, signed=False)
+    # /futures/data/* is public and only exists on the market host
+    if name in MARKET or name.startswith("/futures/data/"):
+        path = MARKET.get(name, name)
+        return _request(MARKET_BASE, path, params, method, signed=False)
     if name in PRIVATE:
         return _request(TRADE_BASE, PRIVATE[name], params, method, signed=True)
 

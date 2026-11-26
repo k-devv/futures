@@ -71,7 +71,30 @@ signal at a level.
 if a liquidation prints in the same second as an "absorption"    treat it as forced flow, not defence
 ```
 
-### e. RPI trades — `isRPITrade`, and `nq` in aggTrades
+### e. The trade stream that actually works
+
+```
+bnbusdt@trade        works, every fill, 15 messages per second on BNB
+bnbusdt@aggTrade     connected, then delivered nothing in 8 s on BNB, ETH and BTC
+bnbusdt@bookTicker   works, best bid and ask
+bnbusdt@depth20@100ms works, 20 levels ten times a second
+!forceOrder@arr      connected, delivered nothing in 40 s
+bnbusdt@forceOrder   connected, delivered nothing in 30 s
+```
+
+`@trade` is what the footprint must read. Its payload:
+
+```json
+{"e":"trade","T":1795726073217,"s":"BNBUSDT","t":2338023459,
+ "p":"556.460","q":"0.46","X":"MARKET","m":true,"st":1}
+```
+
+`st` is not in the documented schema. Do not build on it.
+
+The liquidation streams stayed silent in the window we tested, so liquidation labelling is
+**unverified** — useful in principle, not to be wired in until we have seen one payload.
+
+### f. RPI trades — isRPITrade, and nq in aggTrades
 
 ```
 {"p": "556.71", "q": "683.50", "nq": "683.50", "isBuyerMaker": false, "isRPITrade": false}

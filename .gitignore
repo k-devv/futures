@@ -4,4 +4,5 @@ secrets/
 data/keys.json
 *.jsonl
 node_modules/
+__pycache__/
 .DS_Store

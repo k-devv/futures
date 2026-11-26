@@ -38,6 +38,7 @@ CONTENT_TYPES = {"html": "text/html; charset=utf-8", "js": "text/javascript; cha
                  "svg": "image/svg+xml", "png": "image/png"}
 
 _lock = threading.Lock()
+_last_ballast_fill = 0        # throttle: the history call for missing BALLAST runs at most once a minute
 _state = {
     "window": None,             # start ms of the window being built
     "trades": [],               # fills of that window, from the socket
@@ -222,6 +223,16 @@ def snapshot(limit=None):
         finished = list(_state["finished"])
 
         current = None
+        # a bar closes before Binance publishes the next 5m OI row, so its BALLAST
+        # can be missing at first. Top it up, throttled, until the row exists.
+        global _last_ballast_fill
+        if finished and time.time() - _last_ballast_fill > 60:
+            recent = finished[-6:]
+            if any(bar.get("ballast") is None for bar in recent):
+                ballast.attach(recent, tape.SYMBOL)
+                _last_ballast_fill = time.time()
+                finished = list(_state["finished"])
+
         if _state["trades"]:
             made = footprint.bars_from_trades(_dedupe(_state["trades"]), WINDOW_MS)
             if made:

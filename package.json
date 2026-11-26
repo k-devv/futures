@@ -1,0 +1,14 @@
+{
+  "name": "futures",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal futures terminal: tape, footprint, signals",
+  "scripts": {
+    "build": "tailwindcss -i ./src/app.css -o ./app/app.css --minify",
+    "dev": "tailwindcss -i ./src/app.css -o ./app/app.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.5",
+    "tailwindcss": "^4.3.5"
+  }
+}

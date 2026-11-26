@@ -1,0 +1,213 @@
+/*
+================================================================================
+ src/app.css  -  the Tailwind v4 entry for Futures
+================================================================================
+ WHAT   : One source stylesheet. @theme holds the design tokens (they become
+          real Tailwind utilities), @layer base holds the page defaults, and
+          @layer components holds the six patterns a page is allowed to reuse.
+ WHY    : Inline Tailwind in the HTML stays short because these tokens exist,
+          and the components exist because a button written twice is a bug.
+ WHERE  : Built by `npm run build` into app/app.css. Never edit app/app.css.
+ SCALE  : New shared pattern -> add it to @layer components, not to a page.
+================================================================================
+*/
+
+@import "tailwindcss";
+
+@source "../app/**/*.{html,js}";
+
+/* ---------------------------------------------------------------- tokens */
+@theme {
+  --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system,
+               BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* the seven-step scale: nothing smaller than micro, nothing beyond hero */
+  --text-micro: 11px;   --text-micro--line-height: 16px;
+  --text-meta: 13px;    --text-meta--line-height: 20px;
+  --text-body: 15px;    --text-body--line-height: 24px;
+  --text-title: 18px;   --text-title--line-height: 26px;
+  --text-heading: 22px; --text-heading--line-height: 28px;
+  --text-display: 28px; --text-display--line-height: 34px;
+  --text-hero: clamp(30px, 5vw, 44px);
+  --text-hero--line-height: 1.08;
+
+  /* obsidian surfaces */
+  --color-canvas: #09090b;
+  --color-chrome: #0d0d0f;
+  --color-card: #121214;
+  --color-hover: #18181b;
+
+  /* one easing, borrowed from Stripe's spring */
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ---------------------------------------------------------------- base */
+@layer base {
+  :root {
+    --line: rgba(255, 255, 255, 0.08);
+    --text: #f3f4f6;
+    --text-dim: #94a3b8;
+    --text-subtle: #64748b;
+  }
+
+  html {
+    zoom: 1;                                  /* phones: native scale */
+    -webkit-text-size-adjust: 100%;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+  }
+
+  @media (min-width: 1024px) {
+    html { zoom: 0.82; }                      /* desktop: high-density scale */
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    color: var(--text);
+    background: var(--color-canvas);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  /* the app is designed at 0.82, so 100vh must be corrected once */
+  .h-app-screen {
+    height: calc(100vh / 0.82);
+    max-height: calc(100dvh / 0.82);
+    overflow: hidden;
+  }
+  @media (max-width: 1023px) {
+    .h-app-screen { height: 100dvh; max-height: 100dvh; }
+  }
+
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 16px); }
+}
+
+/* ---------------------------------------------------------------- components */
+@layer components {
+  .text-dim    { color: var(--text-dim); }
+  .text-subtle { color: var(--text-subtle); }
+
+  /* buttons */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    height: 38px; padding: 7px 14px; border-radius: 8px;
+    font-size: var(--text-meta); line-height: var(--text-meta--line-height); font-weight: 500;
+    cursor: pointer; user-select: none; border: 1px solid transparent;
+    transition: all 150ms var(--ease-spring);
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: .45; pointer-events: none; }
+  .btn-sm { height: 30px; padding: 4px 10px; border-radius: 6px; }
+
+  .btn-primary   { background: #fff; color: #09090b; font-weight: 600; }
+  .btn-primary:hover { background: #f3f4f6; }
+  .btn-secondary { background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.1); color: #f1f5f9; }
+  .btn-secondary:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.2); }
+  .btn-ghost     { background: transparent; color: var(--text-dim); }
+  .btn-ghost:hover { background: rgba(255,255,255,.07); color: #fff; }
+  .btn-danger    { background: rgba(244,63,94,.1); border-color: rgba(244,63,94,.25); color: #fda4af; }
+  .btn-danger:hover { background: rgba(244,63,94,.2); border-color: rgba(244,63,94,.45); }
+
+  /* card */
+  .card {
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: rgba(18, 18, 20, .95);
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05);
+  }
+
+  /* badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 2px 8px; border-radius: 999px;
+    font-size: var(--text-micro); line-height: var(--text-micro--line-height); font-weight: 500;
+    border: 1px solid transparent;
+  }
+  .badge-neutral { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.1); color: #d1d5db; }
+  .badge-success { background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.25); color: #34d399; }
+  .badge-warning { background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.25); color: #fbbf24; }
+  .badge-danger  { background: rgba(244,63,94,.12);  border-color: rgba(244,63,94,.25);  color: #fb7185; }
+  .badge-info    { background: rgba(56,189,248,.12); border-color: rgba(56,189,248,.25); color: #38bdf8; }
+
+  /* input */
+  .input {
+    width: 100%; border-radius: 8px; padding: 8px 12px;
+    border: 1px solid rgba(255,255,255,.1); background: var(--color-canvas);
+    font-size: var(--text-meta); line-height: var(--text-meta--line-height); color: #fff;
+    transition: border-color 150ms var(--ease-spring);
+  }
+  .input:focus { outline: none; border-color: rgba(255,255,255,.3); }
+
+  /* navigation */
+  .nav-item {
+    position: relative;
+    display: flex; align-items: center; height: 36px; padding: 0 12px;
+    border-radius: 8px; border: 1px solid transparent;
+    font-size: var(--text-meta); font-weight: 500;
+    color: var(--text-dim); text-decoration: none;
+    transition: color 150ms var(--ease-spring);
+  }
+  .nav-item:hover { color: #fff; }
+  .nav-item.active {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  /* table */
+  .table { width: 100%; border-collapse: collapse; }
+  .table th {
+    text-align: left; padding: 8px 16px; font-size: var(--text-micro);
+    font-weight: 500; color: var(--text-subtle); border-bottom: 1px solid var(--line);
+  }
+  .table td {
+    padding: 10px 16px; font-size: var(--text-meta); line-height: var(--text-meta--line-height);
+    border-bottom: 1px solid rgba(255,255,255,.05);
+  }
+  .table tr:last-child td { border-bottom: 0; }
+  .table .num { text-align: right; }
+}
+
+/* ---------------------------------------------------------------- states */
+#scrim {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 200ms var(--ease-spring), visibility 200ms;
+}
+body.drawer-open #scrim { opacity: 1; visibility: visible; pointer-events: auto; }
+
+/* the drawer panel: closed off-screen, open at 0. One class owns the movement so
+   Tailwind's translate utilities can never fight it. */
+.drawer-panel {
+  transform: translateX(-100%);
+  transition: transform 200ms var(--ease-spring);
+}
+body.drawer-open .drawer-panel { transform: translateX(0); }
+
+@media (min-width: 1024px) {
+  .drawer-panel { transform: none; transition: none; }
+}
+@media (min-width: 1024px) {
+  #scrim { display: none; }
+}
+
+/* one reading column */
+#page > .page-enter {
+  max-width: 880px;
+  margin-inline: auto;
+  padding-bottom: 8px;
+}
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter { animation: page-in 180ms var(--ease-spring) both; }

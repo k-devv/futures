@@ -21,12 +21,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    theme: { extend: { colors: { canvas: '#09090b', chrome: '#0d0d0f', card: '#121214', hover: '#18181b' } } },
-  };
-</script>
+<!-- app.css is built by `npm run build` from src/app.css: tokens, components, uuids -->
 <link rel="stylesheet" href="./app.css" />
 </head>
 
@@ -36,9 +31,8 @@
 
   <!-- ------------------------------------------------ sidebar / drawer -->
   <aside id="sidebar"
-         class="fixed inset-y-0 left-0 z-40 w-[260px] -translate-x-full lg:translate-x-0
-                lg:static lg:z-auto transition-transform duration-200 ease-out
-                bg-chrome border-r border-white/[0.08] flex flex-col">
+         class="drawer-panel fixed inset-y-0 left-0 z-40 w-[260px]
+                lg:static lg:z-auto bg-chrome border-r border-white/[0.08] flex flex-col">
     <div class="h-14 flex items-center gap-2 px-5 border-b border-white/[0.08]">
       <span class="text-meta">Futures</span>
       <span class="text-micro text-subtle">BNB perp</span>

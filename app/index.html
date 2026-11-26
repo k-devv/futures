@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--
+================================================================================
+ app/index.html
+================================================================================
+ WHAT   : The shell: header, sidebar, drawer, and the slot pages mount into.
+ WHY    : One frame, three pages, no framework. Everything visual comes from
+          app.css (tokens + components) and Tailwind utilities for layout only.
+ WHERE  : Futures/app - the only HTML file in this project.
+ SCALE  : lg and up = persistent sidebar. Below lg = drawer + scrim.
+================================================================================
+-->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#09090b" />
+<title>Futures</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: { colors: { canvas: '#09090b', chrome: '#0d0d0f', card: '#121214', hover: '#18181b' } } },
+  };
+</script>
+<link rel="stylesheet" href="./app.css" />
+</head>
+
+<body>
+
+<div class="h-app-screen flex">
+
+  <!-- ------------------------------------------------ sidebar / drawer -->
+  <aside id="sidebar"
+         class="fixed inset-y-0 left-0 z-40 w-[260px] -translate-x-full lg:translate-x-0
+                lg:static lg:z-auto transition-transform duration-200 ease-out
+                bg-chrome border-r border-white/[0.08] flex flex-col">
+    <div class="h-14 flex items-center gap-2 px-5 border-b border-white/[0.08]">
+      <span class="text-meta">Futures</span>
+      <span class="text-micro text-subtle">BNB perp</span>
+    </div>
+
+    <nav class="p-3 flex flex-col gap-1">
+      <a href="#/signal" data-route="signal" class="nav-item">Signal</a>
+      <a href="#/trades" data-route="trades" class="nav-item">Trades</a>
+      <a href="#/log"    data-route="log"    class="nav-item">Log</a>
+    </nav>
+
+    <div class="mt-auto p-4 border-t border-white/[0.08] flex items-center justify-between">
+      <span class="text-micro text-subtle">engine</span>
+      <span id="engine" class="badge badge-neutral">off</span>
+    </div>
+  </aside>
+
+  <!-- scrim, closes the drawer -->
+  <button id="scrim" type="button" aria-label="close menu"
+          class="fixed inset-0 z-30 bg-black/70 lg:hidden"></button>
+
+  <!-- ------------------------------------------------ main column -->
+  <div class="flex-1 min-w-0 flex flex-col">
+
+    <header class="h-14 flex-none flex items-center gap-3 px-4 lg:px-6 bg-chrome border-b border-white/[0.08] pt-safe">
+      <button id="burger" type="button" class="btn btn-ghost btn-sm lg:hidden" aria-label="menu">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+          <path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"/>
+        </svg>
+      </button>
+
+      <h1 id="title" class="text-meta">Signal</h1>
+      <span id="clock" class="ml-auto text-micro text-subtle">--:--:--</span>
+    </header>
+
+    <main id="page" class="flex-1 min-h-0 overflow-y-auto p-4 lg:p-6 pb-safe">
+      <!-- pages mount here -->
+    </main>
+  </div>
+</div>
+
+<script src="./app.js"></script>
+</body>
+</html>

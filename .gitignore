@@ -1,0 +1,6 @@
+﻿# never commit keys
+secrets/
+data/keys.json
+*.jsonl
+node_modules/
+.DS_Store

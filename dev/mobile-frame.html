@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--
+================================================================================
+ dev/mobile-frame.html
+================================================================================
+ WHAT   : A 390x844 frame around the real app, for checking the phone layout.
+ WHY    : Headless Chrome refuses to go narrower than 500px, so the phone is
+          verified inside an iframe of the exact size instead of a fake window.
+ WHERE  : Futures/dev - development only, never shipped.
+ SCALE  : Change the width/height in the iframe to test another device.
+================================================================================
+-->
+<meta charset="utf-8" />
+<title>mobile frame</title>
+<style>
+  html, body { margin: 0; background: #000; }
+  .frame { width: 390px; height: 844px; border: 0; display: block; margin: 12px; }
+</style>
+</head>
+<body>
+  <iframe class="frame" id="frame"></iframe>
+  <script>
+    // pass the parent's query string through, so ?menu=open opens the app's drawer
+    document.getElementById('frame').src = '../app/index.html' + location.search + '#/signal';
+  </script>
+</body>
+</html>

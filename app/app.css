@@ -1,0 +1,197 @@
+/*
+================================================================================
+ app/app.css  -  the only stylesheet in this project
+================================================================================
+ WHAT   : Design tokens, the zoom-0.82 base, and the components we actually use:
+          btn, card, badge, input, nav-item, table. Tailwind (CDN) handles layout.
+ WHY    : Tokens and components live in one file so no page invents its own.
+          Inside a Tailwind @layer-equivalent order: base, components, utilities.
+ WHERE  : Futures/app - loaded after the Tailwind CDN.
+ SCALE  : Add a class here only when a second page needs it.
+================================================================================
+*/
+
+/* ---------------------------------------------------------------- tokens */
+:root {
+  --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system,
+               BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  --text-micro: 11px;   --text-micro-lh: 16px;
+  --text-meta: 13px;    --text-meta-lh: 20px;
+  --text-body: 15px;    --text-body-lh: 24px;
+  --text-title: 18px;   --text-title-lh: 26px;
+  --text-heading: 22px; --text-heading-lh: 28px;
+  --text-display: 28px; --text-display-lh: 34px;
+  --text-hero-lh: 1.08;
+
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --canvas: #09090b;
+  --chrome: #0d0d0f;
+  --card: #121214;
+  --hover: #18181b;
+  --line: rgba(255, 255, 255, 0.08);
+  --text: #f3f4f6;
+  --text-dim: #94a3b8;
+  --text-subtle: #64748b;
+}
+
+/* ---------------------------------------------------------------- base */
+html {
+  zoom: 1;                              /* phones: native scale, real touch targets */
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+@media (min-width: 1024px) {
+  html { zoom: 0.82; }                  /* desktop: high-density professional scale */
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: var(--text-body-lh);
+  color: var(--text);
+  background: var(--canvas);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* the app is designed at 0.82, so 100vh must be corrected once */
+.h-app-screen {
+  height: calc(100vh / 0.82);
+  max-height: calc(100dvh / 0.82);
+  overflow: hidden;
+}
+@media (max-width: 1023px) {
+  .h-app-screen { height: 100dvh; max-height: 100dvh; }
+}
+
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 16px); }
+
+/* ---------------------------------------------------------------- type */
+.text-hero    { font-size: clamp(30px, 5vw, 44px); line-height: var(--text-hero-lh); letter-spacing: -0.02em; font-weight: 600; }
+.text-display { font-size: var(--text-display); line-height: var(--text-display-lh); letter-spacing: -0.02em; font-weight: 600; }
+.text-heading { font-size: var(--text-heading); line-height: var(--text-heading-lh); letter-spacing: -0.01em; font-weight: 600; }
+.text-title   { font-size: var(--text-title); line-height: var(--text-title-lh); letter-spacing: -0.01em; font-weight: 600; }
+.text-body    { font-size: var(--text-body); line-height: var(--text-body-lh); }
+.text-meta    { font-size: var(--text-meta); line-height: var(--text-meta-lh); font-weight: 500; }
+.text-micro   { font-size: var(--text-micro); line-height: var(--text-micro-lh); font-weight: 500; letter-spacing: 0.01em; }
+.text-dim     { color: var(--text-dim); }
+.text-subtle  { color: var(--text-subtle); }
+
+/* ---------------------------------------------------------------- buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 38px; padding: 7px 14px; border-radius: 8px;
+  font-size: var(--text-meta); line-height: var(--text-meta-lh); font-weight: 500;
+  cursor: pointer; user-select: none; border: 1px solid transparent;
+  transition: all 150ms var(--ease-spring);
+}
+.btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: .45; pointer-events: none; }
+.btn-sm { height: 30px; padding: 4px 10px; border-radius: 6px; }
+
+.btn-primary   { background: #fff; color: #09090b; font-weight: 600; }
+.btn-primary:hover { background: #f3f4f6; }
+.btn-secondary { background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.1); color: #f1f5f9; }
+.btn-secondary:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.2); }
+.btn-ghost     { background: transparent; color: var(--text-dim); }
+.btn-ghost:hover { background: rgba(255,255,255,.07); color: #fff; }
+.btn-danger    { background: rgba(244,63,94,.1); border-color: rgba(244,63,94,.25); color: #fda4af; }
+.btn-danger:hover { background: rgba(244,63,94,.2); border-color: rgba(244,63,94,.45); }
+
+/* ---------------------------------------------------------------- card */
+.card {
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(18, 18, 20, .95);
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.card-section { padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+.card-section:last-child { border-bottom: 0; }
+
+/* ---------------------------------------------------------------- badges */
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 8px; border-radius: 999px;
+  font-size: var(--text-micro); line-height: var(--text-micro-lh); font-weight: 500;
+  border: 1px solid transparent;
+}
+.badge-neutral { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.1); color: #d1d5db; }
+.badge-success { background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.25); color: #34d399; }
+.badge-warning { background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.25); color: #fbbf24; }
+.badge-danger  { background: rgba(244,63,94,.12);  border-color: rgba(244,63,94,.25);  color: #fb7185; }
+.badge-info    { background: rgba(56,189,248,.12); border-color: rgba(56,189,248,.25); color: #38bdf8; }
+
+/* ---------------------------------------------------------------- input */
+.input {
+  width: 100%; border-radius: 8px; padding: 8px 12px;
+  border: 1px solid rgba(255,255,255,.1); background: var(--canvas);
+  font-size: var(--text-meta); line-height: var(--text-meta-lh); color: #fff;
+  transition: border-color 150ms var(--ease-spring);
+}
+.input:focus { outline: none; border-color: rgba(255,255,255,.3); }
+
+/* ---------------------------------------------------------------- nav */
+.nav-item {
+  display: flex; align-items: center; height: 36px; padding: 0 12px;
+  border-radius: 8px; font-size: var(--text-meta); font-weight: 500;
+  color: var(--text-dim); text-decoration: none;
+  transition: background-color 150ms var(--ease-spring), color 150ms var(--ease-spring);
+}
+.nav-item:hover { background: var(--hover); color: #fff; }
+.nav-item.active { background: var(--hover); color: #fff; box-shadow: inset 2px 0 0 #fff; }
+
+/* ---------------------------------------------------------------- table */
+.table { width: 100%; border-collapse: collapse; }
+.table th {
+  text-align: left; padding: 8px 16px; font-size: var(--text-micro);
+  font-weight: 500; color: var(--text-subtle); border-bottom: 1px solid var(--line);
+}
+.table td {
+  padding: 10px 16px; font-size: var(--text-meta); line-height: var(--text-meta-lh);
+  border-bottom: 1px solid rgba(255,255,255,.05);
+}
+.table tr:last-child td { border-bottom: 0; }
+.table .num { text-align: right; }
+
+/* ---------------------------------------------------------------- motion */
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter { animation: page-in 180ms var(--ease-spring) both; }
+
+/* the drawer opens from the checkbox - no JS for the menu itself */
+#menu:checked ~ #sidebar { transform: translateX(0); }
+
+/* ---------------------------------------------------------------- drawer state */
+#scrim {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 200ms var(--ease-spring), visibility 200ms;
+}
+body.drawer-open #scrim { opacity: 1; visibility: visible; pointer-events: auto; }
+
+@media (max-width: 1023px) {
+  body.drawer-open #sidebar { transform: translateX(0) !important; }
+}
+@media (min-width: 1024px) {
+  #scrim { display: none; }
+}
+
+/* ---------------------------------------------------------------- page measure */
+/* one reading column: cards never stretch across a 1920 screen, and never bleed off a phone */
+#page > .page-enter {
+  max-width: 880px;
+  margin-inline: auto;
+  padding-bottom: 8px;
+}
+body { overflow-x: hidden; }

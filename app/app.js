@@ -42,6 +42,17 @@ function render() {
 	document.body.classList.remove('drawer-open');   // navigation closes the drawer
 }
 
+/* ------------------------------------------------------------------ balance */
+// dummy until the account feed exists: one constant, one formatter, one element
+const DUMMY_BALANCE = 5000;
+
+function paintBalance(usdt = DUMMY_BALANCE) {
+	$('balance').innerHTML = `${usdt.toLocaleString('en-US', {
+		minimumFractionDigits: 2,
+		maximumFractionDigits: 2,
+	})} <span class="text-micro text-subtle">USDT</span>`;
+}
+
 /* ------------------------------------------------------------------ clock */
 function tick() {
 	$('clock').textContent = new Date().toLocaleTimeString('en-GB', { hour12: false });
@@ -53,6 +64,7 @@ window.addEventListener('hashchange', render);
 addEventListener('DOMContentLoaded', () => {
 	render();
 	tick();
+	paintBalance();
 	setInterval(tick, 1000);
 
 	// the drawer: two buttons, one class, nothing else

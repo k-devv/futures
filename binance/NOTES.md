@@ -153,7 +153,14 @@ keep   one signed file                     ten endpoints, not one hundred and th
 
 ---
 
-## 6. What the docs did not give
+## 6. One command to see it all
+
+```npython binance/endpoint/api.py snapshot
+```n
+ prints price, funding, open interest and its 5-minute change, the taker ratio, book imbalance,
+ and the retail share of the last 200 trades - in one call, from the two hosts.
+
+## 7. What the docs did not give
 
 ```
 absorption         no endpoint, no derived metric. It stays our own read of the tape.

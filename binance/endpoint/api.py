@@ -164,12 +164,46 @@ def call(name, params=None, method="GET"):
     return _request(TRADE_BASE, name, params, method, signed=True)
 
 
+def snapshot():
+    """
+    One screen of everything that matters at this second, in the order we read it:
+    price, open interest, taker ratio, book imbalance, and the retail share of the tape.
+    """
+    mark = call("premium_index", {"symbol": SYMBOL})
+    oi_now = call("open_interest", {"symbol": SYMBOL})
+    oi_hist = call("open_interest_hist", {"symbol": SYMBOL, "period": "5m", "limit": 2})[-1]
+    taker = call("taker_ratio", {"symbol": SYMBOL, "period": "5m", "limit": 1})[-1]
+    book = call("depth", {"symbol": SYMBOL, "limit": 20})
+    tape = call("trades", {"symbol": SYMBOL, "limit": 200})
+
+    bids = sum(float(price) * float(qty) for price, qty in book["bids"])
+    asks = sum(float(price) * float(qty) for price, qty in book["asks"])
+    # /trades marks RPI per trade; aggTrades gives nq instead. Use whichever is present.
+    retail = sum(float(t["qty"]) for t in tape if t.get("isRPITrade"))
+    volume = sum(float(t["qty"]) for t in tape)
+
+    return {
+        "price": float(mark["markPrice"]),
+        "funding": float(mark.get("lastFundingRate", 0)),
+        "open_interest": float(oi_now["openInterest"]),
+        "oi_5m_ago": float(oi_hist["sumOpenInterest"]),
+        "oi_change_5m": round(float(oi_now["openInterest"]) - float(oi_hist["sumOpenInterest"]), 2),
+        "taker_ratio_5m": float(taker["buySellRatio"]),
+        "book_imbalance": round((bids - asks) / (bids + asks), 3),
+        "tape_retail_share": round(retail / volume, 3) if volume else 0,
+    }
+
+
 if __name__ == "__main__":
     import sys
 
     sync_clock()
     what = sys.argv[1] if len(sys.argv) > 1 else "account"
     arg = sys.argv[2] if len(sys.argv) > 2 else None
+
+    if what == "snapshot":
+        print(json.dumps(snapshot(), indent=2))
+        raise SystemExit(0)
 
     if what in ("taker_ratio", "open_interest_hist", "long_short", "top_long_short", "basis"):
         params = {"symbol": SYMBOL, "period": arg or "5m", "limit": 3}

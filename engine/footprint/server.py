@@ -213,7 +213,7 @@ def _dedupe(trades):
     return unique
 
 
-def snapshot():
+def snapshot(limit=None):
     """The chart's whole world: closed bars from Binance, plus the forming one."""
     with _lock:
         finished = list(_state["finished"])
@@ -225,6 +225,9 @@ def snapshot():
                 current = made[0]
                 current["time"] = time.strftime("%H:%M", time.localtime(current["t"] / 1000))
                 current["current"] = True
+
+        if limit:
+            finished = finished[-limit:]
 
         return {
             "symbol": tape.SYMBOL,
@@ -248,7 +251,15 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
 
         if path == "/api/footprint":
-            self._send(200, json.dumps(snapshot()).encode())
+            query = self.path.split("?")[1] if "?" in self.path else ""
+            limit = None
+            for part in query.split("&"):
+                if part.startswith("limit="):
+                    try:
+                        limit = max(1, min(KEEP, int(part.split("=")[1])))
+                    except ValueError:
+                        limit = None
+            self._send(200, json.dumps(snapshot(limit)).encode())
             return
 
         relative = "app/index.html" if path in ("/", "") else path.lstrip("/")

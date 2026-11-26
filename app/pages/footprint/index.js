@@ -16,6 +16,7 @@ import column from './components/column.js';
 
 const STYLE = './pages/footprint/styles/footprint.css';
 const POLL_MS = 2000;
+const COLUMN = 150;      // one bar column: cells + candle + padding
 
 export default {
 	title: 'Footprint',
@@ -44,7 +45,9 @@ export default {
 
 		const tick = async () => {
 			try {
-				const response = await fetch('/api/footprint', { cache: 'no-store' });
+				const chart = element.querySelector('#fp-chart');
+				const fit = chart ? Math.max(4, Math.floor((chart.clientWidth - 70) / COLUMN)) : 20;
+				const response = await fetch(`/api/footprint?limit=${fit}`, { cache: 'no-store' });
 				const state = await response.json();
 				if (element.isConnected) {
 					draw(element, state);
@@ -103,9 +106,9 @@ function draw(element, state) {
 	const prices = priceGrid(bars);
 	chart.innerHTML = bars.map(bar => column(bar, prices)).join('') + axis(prices);
 
-	// always look at the newest bar and the live price, unless the reader has scrolled
-	if (!chart.dataset.scrolled || chart.scrollLeft + chart.clientWidth >= chart.scrollWidth - 40) {
-		chart.scrollLeft = chart.scrollWidth;
+	// the newest bar is pinned: the chart is exactly as wide as what it holds
+	chart.scrollLeft = chart.scrollWidth;
+	if (true) {
 
 		const last = bars[bars.length - 1];
 		const row = prices.findIndex(price => Math.abs(price - last.close) < 0.1001);

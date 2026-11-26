@@ -36,7 +36,9 @@
 	background: var(--card);
 	height: var(--chart-h);        /* fixed: the chart never eats the page */
 	overflow: auto;
+	scrollbar-width: none;
 }
+.fp-chart::-webkit-scrollbar { width: 0; height: 0; }
 
 #page > .fp-page { padding-bottom: 16px; }
 

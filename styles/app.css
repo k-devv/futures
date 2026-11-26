@@ -1,0 +1,19 @@
+/*
+================================================================================
+ styles/app.css  -  the Tailwind entry
+================================================================================
+ WHAT   : The only file the build reads. It pulls Tailwind, then the tokens,
+          then the components, in that order.
+ WHY    : Every line of styling lives under styles/. The app/ folder holds only
+          the files the browser loads, so it can never turn into a dump.
+ WHERE  : Built by `npm run build` into app/app.css. Never edit app/app.css.
+ SCALE  : Add a file to styles/ and import it here; add nothing to app/ but the
+          built result.
+================================================================================
+*/
+
+@import "tailwindcss";
+@import "./tokens.css";
+@import "./components.css";
+
+@source "../app/**/*.{html,js}";

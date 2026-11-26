@@ -1,99 +1,21 @@
 /*
 ================================================================================
- src/app.css  -  the Tailwind v4 entry for Futures
+ styles/components.css  -  the six patterns a page may reuse
 ================================================================================
- WHAT   : One source stylesheet. @theme holds the design tokens (they become
-          real Tailwind utilities), @layer base holds the page defaults, and
-          @layer components holds the six patterns a page is allowed to reuse.
- WHY    : Inline Tailwind in the HTML stays short because these tokens exist,
-          and the components exist because a button written twice is a bug.
- WHERE  : Built by `npm run build` into app/app.css. Never edit app/app.css.
- SCALE  : New shared pattern -> add it to @layer components, not to a page.
+ WHAT   : btn, card, badge, input, nav-item, table, plus the drawer and the
+          page entrance.
+ WHY    : Utilities lay out; these carry identity. Written once here, used
+          everywhere, never re-invented inside a page.
+ WHERE  : Imported by styles/app.css. Built into app/app.css.
+ SCALE  : A new pattern earns its place only when a second page needs it.
 ================================================================================
 */
 
-@import "tailwindcss";
-
-@source "../app/**/*.{html,js}";
-
-/* ---------------------------------------------------------------- tokens */
-@theme {
-  --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system,
-               BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-
-  /* the seven-step scale: nothing smaller than micro, nothing beyond hero */
-  --text-micro: 11px;   --text-micro--line-height: 16px;
-  --text-meta: 13px;    --text-meta--line-height: 20px;
-  --text-body: 15px;    --text-body--line-height: 24px;
-  --text-title: 18px;   --text-title--line-height: 26px;
-  --text-heading: 22px; --text-heading--line-height: 28px;
-  --text-display: 28px; --text-display--line-height: 34px;
-  --text-hero: clamp(30px, 5vw, 44px);
-  --text-hero--line-height: 1.08;
-
-  /* obsidian surfaces */
-  --color-canvas: #09090b;
-  --color-chrome: #0d0d0f;
-  --color-card: #121214;
-  --color-hover: #18181b;
-
-  /* one easing, borrowed from Stripe's spring */
-  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* ---------------------------------------------------------------- base */
-@layer base {
-  :root {
-    --line: rgba(255, 255, 255, 0.08);
-    --text: #f3f4f6;
-    --text-dim: #94a3b8;
-    --text-subtle: #64748b;
-  }
-
-  html {
-    zoom: 1;                                  /* phones: native scale */
-    -webkit-text-size-adjust: 100%;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-    overscroll-behavior-y: none;
-  }
-
-  @media (min-width: 1024px) {
-    html { zoom: 0.82; }                      /* desktop: high-density scale */
-  }
-
-  body {
-    margin: 0;
-    font-family: var(--font-sans);
-    font-size: var(--text-body);
-    line-height: var(--text-body--line-height);
-    color: var(--text);
-    background: var(--color-canvas);
-    -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
-    overflow-x: hidden;
-  }
-
-  /* the app is designed at 0.82, so 100vh must be corrected once */
-  .h-app-screen {
-    height: calc(100vh / 0.82);
-    max-height: calc(100dvh / 0.82);
-    overflow: hidden;
-  }
-  @media (max-width: 1023px) {
-    .h-app-screen { height: 100dvh; max-height: 100dvh; }
-  }
-
-  .pt-safe { padding-top: env(safe-area-inset-top); }
-  .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 16px); }
-}
-
-/* ---------------------------------------------------------------- components */
 @layer components {
   .text-dim    { color: var(--text-dim); }
   .text-subtle { color: var(--text-subtle); }
 
-  /* buttons */
+  /* ---------------- buttons ---------------- */
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     height: 38px; padding: 7px 14px; border-radius: 8px;
@@ -114,7 +36,7 @@
   .btn-danger    { background: rgba(244,63,94,.1); border-color: rgba(244,63,94,.25); color: #fda4af; }
   .btn-danger:hover { background: rgba(244,63,94,.2); border-color: rgba(244,63,94,.45); }
 
-  /* card */
+  /* ---------------- card ---------------- */
   .card {
     border-radius: 12px;
     border: 1px solid var(--line);
@@ -123,7 +45,7 @@
     box-shadow: 0 1px 3px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05);
   }
 
-  /* badges */
+  /* ---------------- badges ---------------- */
   .badge {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 2px 8px; border-radius: 999px;
@@ -136,7 +58,7 @@
   .badge-danger  { background: rgba(244,63,94,.12);  border-color: rgba(244,63,94,.25);  color: #fb7185; }
   .badge-info    { background: rgba(56,189,248,.12); border-color: rgba(56,189,248,.25); color: #38bdf8; }
 
-  /* input */
+  /* ---------------- input ---------------- */
   .input {
     width: 100%; border-radius: 8px; padding: 8px 12px;
     border: 1px solid rgba(255,255,255,.1); background: var(--color-canvas);
@@ -145,7 +67,7 @@
   }
   .input:focus { outline: none; border-color: rgba(255,255,255,.3); }
 
-  /* navigation */
+  /* ---------------- navigation ---------------- */
   .nav-item {
     position: relative;
     display: flex; align-items: center; height: 36px; padding: 0 12px;
@@ -161,7 +83,7 @@
     background: rgba(255, 255, 255, 0.03);
   }
 
-  /* table */
+  /* ---------------- table ---------------- */
   .table { width: 100%; border-collapse: collapse; }
   .table th {
     text-align: left; padding: 8px 16px; font-size: var(--text-micro);
@@ -175,17 +97,7 @@
   .table .num { text-align: right; }
 }
 
-/* ---------------------------------------------------------------- states */
-#scrim {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 200ms var(--ease-spring), visibility 200ms;
-}
-body.drawer-open #scrim { opacity: 1; visibility: visible; pointer-events: auto; }
-
-/* the drawer panel: closed off-screen, open at 0. One class owns the movement so
-   Tailwind's translate utilities can never fight it. */
+/* ---------------- drawer: one class owns the movement ---------------- */
 .drawer-panel {
   transform: translateX(-100%);
   transition: transform 200ms var(--ease-spring);
@@ -195,11 +107,17 @@ body.drawer-open .drawer-panel { transform: translateX(0); }
 @media (min-width: 1024px) {
   .drawer-panel { transform: none; transition: none; }
 }
-@media (min-width: 1024px) {
-  #scrim { display: none; }
-}
 
-/* one reading column */
+#scrim {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 200ms var(--ease-spring), visibility 200ms;
+}
+body.drawer-open #scrim { opacity: 1; visibility: visible; pointer-events: auto; }
+@media (min-width: 1024px) { #scrim { display: none; } }
+
+/* ---------------- one reading column, one entrance ---------------- */
 #page > .page-enter {
   max-width: 880px;
   margin-inline: auto;

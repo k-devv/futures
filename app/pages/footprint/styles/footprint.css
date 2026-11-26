@@ -27,14 +27,18 @@
 /* ---------------- the chart ---------------- */
 .fp-chart {
 	--row: 18px;                 /* one price step */
+	--chart-h: 560px;            /* fixed viewport height - scrolls inside */
 	--cell: 96px;                /* width of the bid x ask pair */
 	display: flex;
 	padding: 14px 16px;
 	border: 1px solid var(--line);
 	border-radius: 12px;
 	background: var(--card);
-	overflow-x: auto;
+	height: var(--chart-h);        /* fixed: the chart never eats the page */
+	overflow: auto;
 }
+
+#page > .fp-page { padding-bottom: 16px; }
 
 /* ---------------- price axis ---------------- */
 .fp-axis {

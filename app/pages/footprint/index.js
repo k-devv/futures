@@ -103,9 +103,16 @@ function draw(element, state) {
 	const prices = priceGrid(bars);
 	chart.innerHTML = bars.map(bar => column(bar, prices)).join('') + axis(prices);
 
-	// always look at the newest bar, unless the reader has scrolled back
+	// always look at the newest bar and the live price, unless the reader has scrolled
 	if (!chart.dataset.scrolled || chart.scrollLeft + chart.clientWidth >= chart.scrollWidth - 40) {
 		chart.scrollLeft = chart.scrollWidth;
+
+		const last = bars[bars.length - 1];
+		const row = prices.findIndex(price => Math.abs(price - last.close) < 0.1001);
+		if (row >= 0) {
+			const rowHeight = chart.querySelector('.fp-price').getBoundingClientRect().height;
+			chart.scrollTop = Math.max(0, row * rowHeight - chart.clientHeight / 2);
+		}
 	}
 }
 

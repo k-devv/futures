@@ -266,6 +266,57 @@ aggTrades          limit max 1000; a BNB minute is ~50 aggregated trades, so one
 klines             1m, 1440 rows a day, free
 ```
 
+## 5d. Staying alive: what the docs actually give us
+
+All four primitives below were called live on the demo account tonight, not copied from a page.
+
+### 1. The dead-man switch — `POST /fapi/v1/countdownCancelAll`
+
+```json
+{"symbol": "BNBUSDT", "countdownTime": 0}
+```
+
+Send it with a countdown (ms), then keep re-sending. If our process dies, the countdown runs out and
+**Binance cancels every open order on that symbol by itself**. `0` switches it off.
+
+This is the official answer to the orphan brackets we found (`8` of them resting with no position):
+if the engine can die, it must leave a timer that cleans up after it.
+
+### 2. The user data stream — `listenKey`
+
+```
+POST   /fapi/v1/listenKey   ->  {"listenKey": "..."}   (valid ~60 minutes)
+PUT    /fapi/v1/listenKey   ->  keepalive, every 30-60 minutes
+DELETE /fapi/v1/listenKey   ->  close it
+WS     wss://fstream.binance.com/ws/<listenKey>
+```
+
+Events that matter: `ACCOUNT_UPDATE` (balance and positions changed), `ORDER_TRADE_UPDATE` (an
+order filled, partially filled or cancelled), `listenKeyExpired`.
+
+**Why this beats polling:** the exchange tells us the moment a stop or target fires. No polling
+window where we think a position is open after it closed.
+
+### 3. Boot safety — read before trading
+
+```
+GET /fapi/v1/openOrders        normal orders still resting
+GET /fapi/v1/openAlgoOrders    brackets still resting
+GET /fapi/v2/positionRisk      what is actually open
+```
+
+On start: adopt what is open and its brackets, or flatten and cancel. Never start trading on a
+blank assumption.
+
+### 4. Reconnects — what the streams promise
+
+```
+a stream connection is not permanent: expect a disconnect, plan for it
+ping/pong keeps it alive; reconnect with backoff, then re-read the current bar from klines
+partial book depth (<symbol>@depth20@100ms) needs no REST snapshot to stay in sync
+diff depth does - it must be rebuilt from a snapshot, which is why we use partial
+```
+
 ## 6. One command to see it all
 
 ```npython binance/endpoint/api.py snapshot

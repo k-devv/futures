@@ -74,6 +74,11 @@ PRIVATE = {
     "leverage":       "/fapi/v1/leverage",
     "margin_type":    "/fapi/v1/marginType",
     "commission":     "/fapi/v1/commissionRate",
+    # survivability
+    "open_orders":    "/fapi/v1/openOrders",           # normal orders still resting
+    "all_open":       "/fapi/v1/allOpenOrders",        # cancel them all (DELETE)
+    "listen_key":     "/fapi/v1/listenKey",            # user data stream: POST, PUT, DELETE
+    "countdown":      "/fapi/v1/countdownCancelAll",   # dead-man switch: cancels everything if we stop
 }
 
 # ------------------------------------------------------------------ state

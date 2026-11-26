@@ -44,9 +44,6 @@
 
 /* ---------------- price axis ---------------- */
 .fp-axis {
-	position: sticky;
-	right: 0;
-	z-index: 2;
 	flex: none;
 	width: 56px;
 	background: var(--card);

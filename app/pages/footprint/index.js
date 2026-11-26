@@ -2,8 +2,8 @@
 ================================================================================
  pages/footprint/index.js  -  the 5m footprint page
 ================================================================================
- WHAT   : Fetches /api/footprint every 2 s and draws the finished bars plus the
-          one still forming. Candle and bid x ask rows, nothing else.
+ WHAT   : Fetches /api/footprint every 2 s and draws the closed bars plus the one
+          still forming. Candle, bid x ask rows, POC, BALLAST. Nothing else.
  WHY    : The page is a viewer. The server owns the tape and the 5-minute clock;
           the page owns pixels.
  WHERE  : app/pages/footprint
@@ -16,7 +16,7 @@ import column from './components/column.js';
 
 const STYLE = './pages/footprint/styles/footprint.css';
 const POLL_MS = 2000;
-const AXIS = 70;         // price axis + breathing room
+const FETCH_BARS = 30;     // ask for the maximum; the page trims to what fits
 
 export default {
 	title: 'Footprint',
@@ -43,48 +43,33 @@ export default {
 				</section>
 			</div>`;
 
-		// how many bars fit is measured from the first column actually drawn,
-		// never guessed - a guess shows 4 bars on a wide screen
-		this.columnWidth = 0;
-
 		const tick = async () => {
 			try {
-				const chart = element.querySelector('#fp-chart');
-				// a little slack so the left-most bar is never clipped
-				const fit = this.columnWidth && chart
-					? Math.max(4, Math.floor((chart.clientWidth - AXIS - 8) / (this.columnWidth + 2)))
-					: 10;
-
-				const response = await fetch(`/api/footprint?limit=${fit}`, { cache: 'no-store' });
+				const response = await fetch(`/api/footprint?limit=${FETCH_BARS}`, { cache: 'no-store' });
 				const state = await response.json();
-				if (!element.isConnected) {
-					return;
-				}
-
-				draw(element, state);
-
-				const first = element.querySelector('.fp-bar');
-				if (first && !this.columnWidth) {
-					this.columnWidth = first.getBoundingClientRect().width;
-					setTimeout(tick, 0);          // redraw immediately with the real fit
+				if (element.isConnected) {
+					await draw(element, state);
 				}
 			} catch (error) {
 				setStatus(element, 'offline', 'badge-danger');
 			}
 		};
 
-		this.onResize = () => {
-			this.columnWidth = 0;
-			tick();
-		};
+		this.onResize = () => tick();
 		window.addEventListener('resize', this.onResize);
 
 		const start = () => setTimeout(tick, 60);
 		if (document.querySelector(`link[href="${STYLE}"]`)) {
 			start();
 		} else {
-			const link = document.querySelector(`link[href="${STYLE}"]`) || document.createElement('link');
-			link.addEventListener('load', start, { once: true });
+			const observer = new MutationObserver(() => {
+				if (document.querySelector(`link[href="${STYLE}"]`)) {
+					observer.disconnect();
+					start();
+				}
+			});
+			observer.observe(document.head, { childList: true });
+			setTimeout(start, 300);        // never wait forever for a stylesheet
 		}
 
 		this.timer = setInterval(tick, POLL_MS);
@@ -107,8 +92,8 @@ function toView(state) {
 		time: bar.time,
 		current: Boolean(bar.current),
 		poc: bar.poc === null || bar.poc === undefined ? null : Number(bar.poc).toFixed(1),
-		ballast: bar.ballast,
 		pocSide: bar.pocSide,
+		ballast: bar.ballast,
 		open: bar.open, close: bar.close, high: bar.high, low: bar.low,
 		rows: Object.fromEntries(
 			Object.entries(bar.rows || {}).map(([price, volume]) => [
@@ -119,7 +104,7 @@ function toView(state) {
 	}));
 }
 
-function draw(element, state) {
+async function draw(element, state) {
 	const chart = element.querySelector('#fp-chart');
 	if (!chart) {
 		return;
@@ -130,30 +115,33 @@ function draw(element, state) {
 	const bars = toView(state);
 	if (!bars.length) {
 		chart.innerHTML = '<p class="fp-wait">no fills in this window yet...</p>';
-		chart.dataset.scrolled = '';
 		return;
 	}
 
-	const prices = priceGrid(bars);
-	chart.innerHTML = bars.map(bar => column(bar, prices)).join('') + axis(prices);
+	// draw, let the browser lay it out, and drop the oldest bar while it overflows.
+	// only the newest bars survive, which is exactly what we want to look at.
+	let shown = bars;
+	for (let guard = 0; guard < 60; guard += 1) {
+		renderInto(chart, shown);
+		await new Promise(resolve => requestAnimationFrame(resolve));
 
-	// the newest bar is pinned: the chart is exactly as wide as what it holds
-	if (true) {
-
-		const last = bars[bars.length - 1];
-		const row = prices.findIndex(price => Math.abs(price - last.close) < 0.1001);
-		if (row >= 0) {
-			const rowHeight = chart.querySelector('.fp-price').getBoundingClientRect().height;
-			chart.scrollTop = Math.max(0, row * rowHeight - chart.clientHeight / 2);
+		if (chart.scrollWidth <= chart.clientWidth + 1 || shown.length <= 2) {
+			break;
 		}
+		shown = shown.slice(1);
+	}
+
+	// keep the live price in the middle of the visible prices
+	const last = shown[shown.length - 1];
+	const prices = priceGrid(shown);
+	const row = prices.findIndex(price => Math.abs(price - last.close) < 0.1001);
+	if (row >= 0) {
+		const rowHeight = chart.querySelector('.fp-price')?.getBoundingClientRect().height || 18;
+		chart.scrollTop = Math.max(0, row * rowHeight - chart.clientHeight / 2);
 	}
 }
 
-function render(bars) {
-	const chart = document.getElementById('fp-chart');
-	if (!chart) {
-		return;
-	}
+function renderInto(chart, bars) {
 	const prices = priceGrid(bars);
 	chart.innerHTML = bars.map(bar => column(bar, prices)).join('') + axis(prices);
 }

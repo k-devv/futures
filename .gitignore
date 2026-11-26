@@ -1,8 +1,10 @@
 # never commit keys
 binance/keys/
 secrets/
-data/keys.json
 *.jsonl
+
+# never commit the tape - it is 30 MB a day and downloadable
+data/
 node_modules/
 __pycache__/
 .DS_Store

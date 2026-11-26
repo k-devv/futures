@@ -153,6 +153,68 @@ keep   one signed file                     ten endpoints, not one hundred and th
 
 ---
 
+## 5b. Round two: the checks that prove the footprint is honest
+
+### Our delta equals Binance's delta, exactly
+
+Every kline carries `volume` (field 5) and `taker buy volume` (field 9), so:
+
+```
+delta = 2 * takerBuy - volume        (the taker sells are the rest of the volume)
+```
+
+Measured on five consecutive live minutes, comparing that against the same minute rebuilt from
+`aggTrades`:
+
+```
+minute   kline volume   derived delta   tape delta   difference
+20:52        84.74          -9.100        -9.100      +0.000
+20:53        35.72         -12.740       -12.740      +0.000
+20:54        65.56         -42.700       -42.700      +0.000
+20:55       217.59        +158.590      +158.590      +0.000
+20:56        39.23         -14.770       -14.770      +0.000
+```
+
+**Zero difference to three decimals.** One kline call now proves whether our websocket dropped
+anything, per minute. `footprint.check_against_kline()` does that.
+
+### Open interest can be polled per bar, not only every 5 minutes
+
+```
+/fapi/v1/openInterest     weight 1 per call, moves every few seconds
+measured: 505,210.68 -> 505,215.35 in 20 s, then flat
+```
+
+`/futures/data/openInterestHist` only gives 5m buckets. Polling the plain endpoint gives the OI
+change **inside a single 1m bar** — far more useful for judging absorption.
+
+### Depth: how far 20/100/500 levels actually reach
+
+```
+limit  20   0.39 USD around price   weight 2
+limit 100   1.99 USD               weight 5
+limit 500  10.68 USD               weight 10
+```
+
+20 levels is too thin to judge a level 0.5 away. `limit=100` covers ±1 USD and costs weight 5,
+so a snapshot every 5 seconds is 60 weight a minute — safe inside 2400.
+
+### The absorption score, from the bar alone
+
+```
+1  the row is 3x the bar's median row
+2  it is the POC of the bar
+3  the close rejected it by more than the bucket
+4  the POC sits in the wick (price fought there and lost)
+5  the next bar did not accept through the absorbed bar
+```
+
+### RPI is empty on BNB
+
+`aggTrades` has `q` and `nq` (not-RPI), `/fapi/v1/trades` has `isRPITrade`. Measured across
+several minutes of BNB: **0.0% RPI**. The field exists; the flow does not, for this symbol.
+`footprint.rpi_share()` reports it so we notice if that ever changes.
+
 ## 6. One command to see it all
 
 ```npython binance/endpoint/api.py snapshot

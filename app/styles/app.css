@@ -17,3 +17,4 @@
 @import "./components.css";
 
 @source "../**/*.{html,js}";
+@source inline("badge-neutral badge-success badge-warning badge-danger badge-info text-dim text-subtle text-success text-danger text-warning");

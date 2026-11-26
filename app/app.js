@@ -11,18 +11,17 @@
 ================================================================================
 */
 
-import signal from './pages/signal/index.js';
-import trades from './pages/trades/index.js';
-import log from './pages/log/index.js';
+import footprint from './pages/footprint/index.js';
+
 
 const $ = (id) => document.getElementById(id);
 
-const PAGES = { signal, trades, log };
+const PAGES = { footprint };
 
 /* ------------------------------------------------------------------ routing */
 function currentRoute() {
 	const hash = location.hash.replace('#/', '');
-	return PAGES[hash] ? hash : 'signal';
+	return PAGES[hash] ? hash : 'footprint';
 }
 
 function render() {

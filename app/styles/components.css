@@ -12,7 +12,7 @@
 */
 
 @layer components {
-  .text-dim    { color: var(--text-dim); }
+  .text-dim     { color: var(--text-dim); }
   .text-subtle { color: var(--text-subtle); }
 
   /* ---------------- buttons ---------------- */
@@ -94,8 +94,15 @@
     border-bottom: 1px solid rgba(255,255,255,.05);
   }
   .table tr:last-child td { border-bottom: 0; }
-  .table .num { text-align: right; }
+  .table .num { text-align: right; font-variant-numeric: tabular-nums; }
 }
+
+/* ---------------- semantic numbers ----------------
+   Written as plain CSS on purpose: these are applied from JavaScript at runtime,
+   and a build that tree-shakes utilities must never be able to drop them. */
+.text-success { color: var(--color-success); }
+.text-danger  { color: var(--color-danger); }
+.text-warning { color: var(--color-warning); }
 
 /* ---------------- drawer: one class owns the movement ---------------- */
 .drawer-panel {

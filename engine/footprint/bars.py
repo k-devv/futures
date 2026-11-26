@@ -1,19 +1,19 @@
 """
 ================================================================================
- engine/footprint.py  -  the tape, bucketed into bars you can read
+ engine/footprint/bars.py  -  the tape, bucketed into bars you can read
 ================================================================================
  WHAT   : Takes raw trades (price, size, buyer-maker flag, time) and returns one
           bar per minute: every 0.1 price row with its buy and sell volume, the
           delta, the POC and which side it printed on, and the bar's OHLC.
  WHY    : Everything we trade is decided from this: absorption needs rows,
           HELD/EATEN needs the next bar, POC needs the busiest row.
- WHERE  : Futures/engine
+ WHERE  : Futures/engine/footprint
  SCALE  : Bucket size is a parameter. Nothing here knows about Binance or HTTP.
 ================================================================================
 
 Run standalone on a CSV from data.binance.vision:
 
-    python engine/footprint.py data/BNBUSDT-aggTrades-2026-11-25.csv
+    python engine/footprint/bars.py data/BNBUSDT-aggTrades-2026-11-25.csv
 """
 
 import csv
@@ -27,18 +27,19 @@ def _bucket(price):
     return round(round(price / BUCKET) * BUCKET, 6)
 
 
-def bars_from_trades(trades):
+def bars_from_trades(trades, bar_ms=60000):
     """
     trades: iterable of (price, qty, is_buyer_maker, ms)
-    returns: list of bars, oldest first. See bar() for the fields.
+    bar_ms: 60000 for a 1m bar, 300000 for 5m - the caller decides
+    returns: list of bars, oldest first.
     """
     minutes = {}
     for price, qty, buyer_maker, ms in trades:
-        minute = ms // 60000
+        minute = ms // bar_ms
         bar = minutes.get(minute)
         if bar is None:
             bar = minutes[minute] = {
-                "t": minute * 60000,
+                "t": minute * bar_ms,
                 "open": price, "high": price, "low": price, "close": price,
                 "rows": {}, "buys": 0.0, "sells": 0.0, "trades": 0,
             }

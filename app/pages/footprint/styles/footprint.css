@@ -1,0 +1,134 @@
+/*
+================================================================================
+ pages/footprint/styles/footprint.css
+================================================================================
+ WHAT   : Everything the footprint page needs and nothing else: the price grid,
+          the candle geometry, the POC and absorbed marks.
+ WHY    : Page-scoped by design. If a rule here is needed by a second page, it
+          moves to app/styles/components.css - never the other way round.
+ WHERE  : app/pages/footprint/styles
+ SCALE  : The only values driven by data are --row and the candle top/height.
+================================================================================
+*/
+
+/* a chart uses the width it has; the 880px reading column is for text pages */
+#page > .fp-page { max-width: none; }
+
+.fp-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+	margin-bottom: 14px;
+}
+.fp-head h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.fp-head p { margin: 3px 0 0; font-size: 11px; color: var(--text-subtle); }
+
+/* ---------------- the chart ---------------- */
+.fp-chart {
+	--row: 18px;                 /* one price step */
+	--cell: 96px;                /* width of the bid x ask pair */
+	display: flex;
+	padding: 14px 16px;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	background: var(--card);
+	overflow-x: auto;
+}
+
+/* ---------------- price axis ---------------- */
+.fp-axis {
+	position: sticky;
+	right: 0;
+	z-index: 2;
+	flex: none;
+	width: 56px;
+	background: var(--card);
+	border-left: 1px solid rgba(255, 255, 255, 0.06);
+	padding-left: 6px;
+}
+.fp-head-cell { height: 16px; }
+.fp-price {
+	height: var(--row);
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	padding-left: 4px;
+	font-size: 10px;
+	color: var(--text-subtle);
+	font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- one bar ---------------- */
+.fp-bar {
+	flex: none;
+	padding: 0 8px;
+	border-right: 1px solid rgba(255, 255, 255, 0.04);
+}
+.fp-bar:last-child { border-right: 0; }
+.fp-bar.current .fp-time { color: #fbbf24; }
+.fp-time {
+	height: 16px;
+	font-size: 10px;
+	color: var(--text-subtle);
+	font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- candle ---------------- */
+.fp-body { display: flex; align-items: flex-start; }
+.fp-candle { position: relative; flex: none; width: 18px; }
+.fp-candle .wick {
+	position: absolute;
+	left: 8px;
+	width: 1px;
+	background: #64748b;
+}
+.fp-candle .body {
+	position: absolute;
+	left: 1px;
+	width: 16px;
+	border-radius: 1px;
+}
+.fp-candle .body.up { background: #34d399; }
+.fp-candle .body.down { background: #fb7185; }
+
+/* ---------------- rows ---------------- */
+.fp-rows { flex: none; width: var(--cell); margin-left: 4px; }
+.fp-row {
+	height: var(--row);
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	align-items: center;
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+}
+.fp-row .bid { text-align: right; color: #fb7185; }
+.fp-row .ask { text-align: left; padding-left: 6px; color: #34d399; }
+.fp-row .tag { font-size: 8px; text-align: center; letter-spacing: 0.03em; color: transparent; }
+
+.fp-row.poc { background: rgba(251, 191, 36, 0.12); box-shadow: inset 2px 0 0 #fbbf24; }
+.fp-row.poc .tag { color: #fbbf24; }
+.fp-row.poc .bid, .fp-row.poc .ask { font-weight: 600; }
+
+.fp-row.absorbed { background: rgba(255, 255, 255, 0.06); box-shadow: inset -2px 0 0 #fff; }
+.fp-row.absorbed .bid, .fp-row.absorbed .ask { color: #fff; }
+
+/* footer kept for later, unused for now */
+.fp-foot {
+	clear: both;
+	display: grid;
+	grid-template-columns: 14px 1fr;
+	align-items: center;
+	gap: 2px 6px;
+	padding-top: 8px;
+	font-variant-numeric: tabular-nums;
+}
+.fp-foot .k { font-size: 9px; color: var(--text-subtle); }
+.fp-foot .v { font-size: 12px; }
+.fp-foot .v.up { color: #34d399; }
+.fp-foot .v.down { color: #fb7185; }
+
+/* the kline check: every closed bar proves itself against Binance */
+.fp-mark { margin-left: 4px; font-size: 9px; }
+.fp-mark.ok { color: #34d399; }
+.fp-mark.bad { color: #fb7185; }

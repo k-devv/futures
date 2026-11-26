@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--
+================================================================================
+ dev/mock-footprint.html  -  how the footprint will look, before it exists
+================================================================================
+ WHAT   : A drawing of the footprint chart with ONE shared price axis: every bar
+          has rows at the same prices, so candles and cells line up honestly.
+          POC marked with its side (BID = sellers hit it, ASK = buyers lifted it).
+ WHY    : Agree on the shape before writing the renderer.
+ WHERE  : Futures/dev
+ SCALE  : 5 bars, 0.1 rows, shared axis. The real chart scrolls back further.
+================================================================================
+-->
+<meta charset="utf-8" />
+<title>footprint mock</title>
+<style>
+  :root {
+    --canvas: #09090b; --card: #121214; --line: rgba(255,255,255,.08);
+    --text: #f3f4f6; --dim: #94a3b8; --subtle: #64748b;
+    --up: #34d399; --down: #fb7185; --poc: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px; background: var(--canvas); color: var(--text);
+    font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: -.01em; }
+  .sub { font-size: 11px; color: var(--subtle); margin: 3px 0 16px; }
+
+  .chart {
+    display: flex; padding: 14px 18px; border: 1px solid var(--line);
+    border-radius: 12px; background: var(--card);
+  }
+
+  /* the shared price axis on the left */
+  .axis { width: 52px; flex: none; }
+  .axis .cell {
+    height: 20px; display: flex; align-items: center; justify-content: flex-end;
+    padding-right: 8px; font-size: 10px; color: var(--subtle);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .bar { display: flex; flex-direction: column; flex: none; padding: 0 8px;
+         border-right: 1px solid rgba(255,255,255,.04); }
+  .bar .head { font-size: 10px; color: var(--subtle); height: 16px; }
+  .bar .body-row { display: flex; }
+  .bar:last-child { border-right: 0; }
+
+  .candles { position: relative; width: 18px; margin-right: 6px; }
+  .wick { position: absolute; left: 8px; width: 1px; background: var(--dim); }
+  .body { position: absolute; left: 1px; width: 16px; border-radius: 1px; }
+  .body.up { background: var(--up); }
+  .body.down { background: var(--down); }
+
+  .cells { width: 118px; }
+  .cell {
+    height: 20px; display: grid; grid-template-columns: 1fr 26px 1fr;
+    align-items: center; font-size: 12px; font-variant-numeric: tabular-nums;
+  }
+  .cell .bid { text-align: right; color: var(--down); }
+  .cell .ask { text-align: left; color: var(--up); padding-left: 6px; }
+  .cell .tag { font-size: 8px; letter-spacing: .03em; color: transparent; text-align: center; }
+
+  /* a row the bar actually traded */
+  .cell.live { border-radius: 2px; }
+  .cell.live .bid, .cell.live .ask { font-weight: 500; }
+
+  /* the busiest row of the bar */
+  .cell.poc { background: rgba(251,191,36,.12); box-shadow: inset 2px 0 0 var(--poc); }
+  .cell.poc .tag { color: var(--poc); }
+
+  /* the absorbed row */
+  .cell.absorbed { background: rgba(255,255,255,.06); box-shadow: inset -2px 0 0 #fff; }
+
+  .foot {
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding-left: 8px; margin-left: 2px; border-left: 1px solid rgba(255,255,255,.05);
+    width: 74px; flex: none;
+  }
+  .foot .k { color: var(--subtle); font-size: 9px; letter-spacing: .04em; }
+  .foot .v { font-size: 12px; font-variant-numeric: tabular-nums; margin-bottom: 8px; }
+  .up-text { color: var(--up); }
+  .down-text { color: var(--down); }
+</style>
+</head>
+<body>
+
+<h1>BNB PERP &middot; 5m footprint</h1>
+<div class="sub">
+  bid &times; ask per 0.1 row &middot; one shared price axis &middot;
+  <span style="color:#fbbf24">POC BID</span> = sellers hit it and were absorbed &middot;
+  <span style="color:#fbbf24">POC ASK</span> = buyers lifted it and were absorbed
+</div>
+
+<div class="chart" id="chart"></div>
+
+<script>
+/* mock bars, in price order (high to low). bid = taker sells, ask = taker buys */
+const BARS = [
+  { time: "00:45", open: 555.4, close: 556.2, high: 556.4, low: 555.3, delta: +18.4, volume: 96.2,
+    rows: { "556.4": [2, 9], "556.3": [6, 21], "556.2": [9, 34], "556.1": [14, 12], "556.0": [31, 8],
+            "555.9": [22, 6], "555.8": [12, 4], "555.7": [6, 3], "555.6": [3, 2], "555.5": [2, 1] },
+    poc: "556.2", absorbed: null },
+  { time: "00:50", open: 556.2, close: 555.6, high: 556.6, low: 555.5, delta: -22.1, volume: 88.7,
+    rows: { "556.6": [4, 11], "556.5": [8, 14], "556.4": [21, 15], "556.3": [33, 12], "556.2": [41, 9],
+            "556.1": [28, 7], "556.0": [15, 5], "555.9": [9, 3], "555.8": [5, 2], "555.7": [2, 1] },
+    poc: "556.2", absorbed: "556.3" },
+  { time: "00:55", open: 555.6, close: 557.1, high: 557.3, low: 555.6, delta: +61.8, volume: 141.5,
+    rows: { "557.3": [6, 22], "557.2": [9, 38], "557.1": [12, 51], "557.0": [15, 27], "556.9": [11, 14],
+            "556.8": [8, 10], "556.7": [6, 7], "556.6": [5, 5], "556.5": [4, 3], "556.4": [3, 2],
+            "556.3": [2, 2], "556.2": [2, 1], "556.1": [1, 1], "556.0": [1, 1], "555.9": [1, 1],
+            "555.8": [1, 1], "555.7": [1, 1], "555.6": [1, 1] },
+    poc: "557.1", absorbed: null },
+  { time: "01:00", open: 557.1, close: 557.0, high: 557.4, low: 556.6, delta: -8.2, volume: 64.3,
+    rows: { "557.4": [7, 13], "557.3": [11, 17], "557.2": [19, 22], "557.1": [26, 19], "557.0": [31, 11],
+            "556.9": [18, 7], "556.8": [10, 5], "556.7": [6, 3], "556.6": [3, 2] },
+    poc: "557.0", absorbed: "557.0" },
+  { time: "01:05", open: 557.0, close: 557.6, high: 557.8, low: 556.9, delta: +34.9, volume: 79.1,
+    rows: { "557.8": [3, 12], "557.7": [5, 26], "557.6": [8, 41], "557.5": [12, 19], "557.4": [17, 11],
+            "557.3": [14, 8], "557.2": [9, 5], "557.1": [6, 3], "557.0": [4, 2], "556.9": [2, 1] },
+    poc: "557.6", absorbed: null },
+];
+
+const STEP = 0.1;
+const ROW_H = 20;
+const prices = [];
+const high = Math.max(...BARS.map(bar => bar.high));
+const low = Math.min(...BARS.map(bar => bar.low));
+for (let price = Math.ceil(high / STEP) * STEP; price >= Math.floor(low / STEP) * STEP - 1e-9; price -= STEP) {
+  prices.push(Number(price.toFixed(1)));
+}
+
+const rowOf = (price) => prices.findIndex(p => Math.abs(p - price) < 0.001);
+const height = prices.length * ROW_H;
+
+const chart = document.getElementById('chart');
+
+/* the axis */
+const axis = document.createElement('div');
+axis.className = 'axis';
+axis.innerHTML = '<div style="height:16px"></div>' +
+  prices.map(price => `<div class="cell">${price.toFixed(1)}</div>`).join('');
+chart.appendChild(axis);
+
+/* one column per bar */
+for (const bar of BARS) {
+  const column = document.createElement('div');
+  column.className = 'bar';
+  column.style.paddingTop = '0';
+
+  const top = rowOf(Math.max(bar.open, bar.close));
+  const bottom = rowOf(Math.min(bar.open, bar.close));
+  const wickTop = rowOf(bar.high);
+  const wickBottom = rowOf(bar.low);
+
+  const rows = prices.map((price) => {
+    const key = price.toFixed(1);
+    const values = bar.rows[key];
+    const isPoc = bar.poc === key;
+    const isAbsorbed = bar.absorbed === key;
+    const side = isPoc ? (values && values[0] > values[1] ? 'BID' : 'ASK') : '';
+
+    return `
+      <div class="cell ${values ? 'live' : ''} ${isPoc ? 'poc' : ''} ${isAbsorbed ? 'absorbed' : ''}">
+        <span class="bid">${values ? values[0] : ''}</span>
+        <span class="tag">${side}</span>
+        <span class="ask">${values ? values[1] : ''}</span>
+      </div>`;
+  }).join('');
+
+  column.innerHTML = `
+    <div class="head">${bar.time}</div>
+    <div class="body-row">
+    <div class="candles" style="height:${height}px">
+      <div class="wick" style="top:${wickTop * ROW_H}px; height:${(wickBottom - wickTop) * ROW_H + ROW_H}px"></div>
+      <div class="body ${bar.close >= bar.open ? 'up' : 'down'}"
+           style="top:${top * ROW_H + 3}px; height:${Math.max((bottom - top) * ROW_H - 6, 8)}px"></div>
+    </div>
+
+    <div class="cells">${rows}</div>
+
+    <div class="foot">
+      <div class="k">DELTA</div>
+      <div class="v ${bar.delta >= 0 ? 'up-text' : 'down-text'}">${bar.delta > 0 ? '+' : ''}${bar.delta}</div>
+      <div class="k">VOL</div>
+      <div class="v">${bar.volume}</div>
+    </div>
+    </div>`;
+
+  chart.appendChild(column);
+}
+</script>
+</body>
+</html>

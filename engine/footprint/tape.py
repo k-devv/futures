@@ -1,17 +1,17 @@
 """
 ================================================================================
- engine/tape.py  -  the live tape, and nothing else
+ engine/footprint/tape.py  -  the live tape, and nothing else
 ================================================================================
  WHAT   : One websocket to Binance's trade stream. Hands every fill to a callback
           as (price, qty, is_buyer_maker, ms). Reconnects by itself when the
           socket drops, which it will - Binance closes connections on purpose.
  WHY    : This is the only live source of truth in the system. Everything the
           footprint shows comes from here, so it has to be boring and patient.
- WHERE  : Futures/engine
+ WHERE  : Futures/engine/footprint
  SCALE  : One symbol, one stream. Add a second stream only if the footprint
           genuinely needs it.
 
-    python engine/tape.py            live, prints a line per second
+    python engine/footprint/tape.py        live, prints a line per second
 """
 
 import asyncio
@@ -73,23 +73,32 @@ async def stream(on_trade, symbol=SYMBOL, url=None, quiet=False):
 
 
 if __name__ == "__main__":
-    # a live sanity run: one line a second with the last price and the running delta
-    state = {"price": 0.0, "buys": 0.0, "sells": 0.0, "count": 0, "at": time.time()}
+    # a live sanity run: the current minute, rebuilt second by second from the tape
+    minute = {"key": None, "buys": 0.0, "sells": 0.0, "count": 0}
+    last = {"price": 0.0, "qty": 0.0, "side": "-"}
 
     def on_trade(price, qty, buyer_maker, ms):
-        state["price"] = price
-        state["count"] += 1
+        key = ms // 60000
+        if key != minute["key"]:
+            minute.update(key=key, buys=0.0, sells=0.0, count=0)
+        minute["count"] += 1
         if buyer_maker:
-            state["sells"] += qty
+            minute["sells"] += qty
+            last["side"] = "SELL"
         else:
-            state["buys"] += qty
+            minute["buys"] += qty
+            last["side"] = "BUY"
+        last["price"] = price
+        last["qty"] = qty
 
     async def report():
         while True:
             await asyncio.sleep(1)
-            delta = state["buys"] - state["sells"]
-            print(f"  {time.strftime('%H:%M:%S')}  price {state['price']:.2f}  "
-                  f"trades {state['count']}  delta {delta:+.2f}", flush=True)
+            volume = minute["buys"] + minute["sells"]
+            delta = minute["buys"] - minute["sells"]
+            print(f"  {time.strftime('%H:%M:%S')}  {last['price']:8.2f}  "
+                  f"{last['side']:4} {last['qty']:7.2f}  "
+                  f"vol {volume:8.2f}  delta {delta:+8.2f}  trades {minute['count']:4}", flush=True)
 
     async def main():
         await asyncio.gather(stream(on_trade), report())

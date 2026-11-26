@@ -140,13 +140,21 @@ body {
 
 /* ---------------------------------------------------------------- nav */
 .nav-item {
-  display: flex; align-items: center; height: 36px; padding: 0 12px;
+  position: relative;
+  display: flex; align-items: center; height: 36px; padding: 0 12px 0 18px;
   border-radius: 8px; font-size: var(--text-meta); font-weight: 500;
   color: var(--text-dim); text-decoration: none;
-  transition: background-color 150ms var(--ease-spring), color 150ms var(--ease-spring);
+  transition: color 150ms var(--ease-spring);
 }
-.nav-item:hover { background: var(--hover); color: #fff; }
-.nav-item.active { background: var(--hover); color: #fff; box-shadow: inset 2px 0 0 #fff; }
+.nav-item:hover { color: #fff; }
+
+/* active: an outlined pill with white text. no filled row, no side bar. */
+.nav-item.active {
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.03);
+}
+.nav-item { border: 1px solid transparent; }
 
 /* ---------------------------------------------------------------- table */
 .table { width: 100%; border-collapse: collapse; }

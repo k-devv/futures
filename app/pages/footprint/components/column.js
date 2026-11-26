@@ -57,5 +57,9 @@ export default function column(bar, prices) {
 
 				<div class="fp-rows">${rows}</div>
 			</div>
+
+			<div class="fp-ballast ${bar.ballast ? (bar.ballast.change > 0 ? 'up' : bar.ballast.change < 0 ? 'down' : 'flat') : 'none'}">
+				${bar.ballast ? `${bar.ballast.change > 0 ? '+' : ''}${Math.round(bar.ballast.change)}` : ''}
+			</div>
 		</div>`;
 }

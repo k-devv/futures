@@ -24,6 +24,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import bars as footprint
 import tape
+from BALLAST import ballast
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.join(os.path.dirname(os.path.dirname(HERE)), "app")
@@ -172,6 +173,8 @@ def backfill():
         if bar:
             seeded.append(bar)
 
+    ballast.attach(seeded, tape.SYMBOL)
+
     with _lock:
         _state["finished"] = seeded[-KEEP:]
 
@@ -225,6 +228,7 @@ def snapshot(limit=None):
                 current = made[0]
                 current["time"] = time.strftime("%H:%M", time.localtime(current["t"] / 1000))
                 current["current"] = True
+                ballast.attach([current], tape.SYMBOL)
 
         if limit:
             finished = finished[-limit:]
@@ -277,6 +281,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    ballast.start(tape.SYMBOL)
     backfill()
     seed_current()
     threading.Thread(target=run_tape, daemon=True).start()

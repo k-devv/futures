@@ -107,6 +107,7 @@ function toView(state) {
 		time: bar.time,
 		current: Boolean(bar.current),
 		poc: bar.poc === null || bar.poc === undefined ? null : Number(bar.poc).toFixed(1),
+		ballast: bar.ballast,
 		pocSide: bar.pocSide,
 		open: bar.open, close: bar.close, high: bar.high, low: bar.low,
 		rows: Object.fromEntries(
@@ -137,7 +138,6 @@ function draw(element, state) {
 	chart.innerHTML = bars.map(bar => column(bar, prices)).join('') + axis(prices);
 
 	// the newest bar is pinned: the chart is exactly as wide as what it holds
-	chart.scrollLeft = chart.scrollWidth;
 	if (true) {
 
 		const last = bars[bars.length - 1];

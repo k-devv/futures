@@ -133,3 +133,18 @@
 .fp-foot .v { font-size: 12px; }
 .fp-foot .v.up { color: #34d399; }
 .fp-foot .v.down { color: #fb7185; }
+
+/* BALLAST: open interest change across the bar.
+   green = positions stayed, red = positions left, blank = no data (never a zero). */
+.fp-ballast {
+	height: 14px;
+	margin-top: 4px;
+	font-size: 10px;
+	font-variant-numeric: tabular-nums;
+	text-align: center;
+	letter-spacing: 0.02em;
+}
+.fp-ballast.up { color: #34d399; }
+.fp-ballast.down { color: #fb7185; }
+.fp-ballast.flat { color: var(--text-subtle); }
+.fp-ballast.none { color: transparent; }

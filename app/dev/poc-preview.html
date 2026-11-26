@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--
+================================================================================
+ dev/poc-preview.html  -  the POC mark, isolated
+================================================================================
+ WHAT   : Renders three real columns through the real column.js, so the POC mark
+          can be checked on its own: one with the ask winning, one with the bid
+          winning, one without a POC.
+ WHY    : A mark that cannot be verified in isolation is a mark you hope works.
+ WHERE  : Futures/dev
+ SCALE  : Uses the shipped component and stylesheet - not a copy.
+================================================================================
+-->
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../app.css" />
+<link rel="stylesheet" href="../pages/footprint/styles/footprint.css" />
+<style> body { padding: 24px; } </style>
+</head>
+<body>
+<div class="fp-chart" id="chart"></div>
+
+<script type="module">
+import render from '../pages/footprint/components/column.js';
+import drawAxis from '../pages/footprint/components/axis.js';
+
+const bars = [
+	{ time: '00:50', open: 557.6, close: 557.2, high: 557.7, low: 557.1,
+	  poc: '557.3', pocSide: 'ask',
+	  rows: { '557.7': [4, 4], '557.6': [9, 50], '557.5': [20, 4], '557.4': [13, 5],
+	          '557.3': [82.83, 106.64], '557.2': [22, 47], '557.1': [2, 1] } },
+
+	{ time: '01:00', open: 556.4, close: 555.6, high: 556.5, low: 555.5,
+	  poc: '555.8', pocSide: 'bid',
+	  rows: { '556.5': [3, 10], '556.4': [18, 11], '556.3': [36, 69], '556.2': [204, 101],
+	          '556.1': [187, 83], '556.0': [90, 55], '555.9': [211.09, 103.69],
+	          '555.8': [132, 34], '555.7': [111, 54] } },
+];
+
+const chart = document.getElementById('chart');
+const prices = [557.7, 557.6, 557.5, 557.4, 557.3, 557.2, 557.1, 557.0,
+                556.9, 556.8, 556.7, 556.6, 556.5, 556.4, 556.3, 556.2,
+                556.1, 556.0, 555.9, 555.8, 555.7, 555.6, 555.5].map(Number);
+
+chart.innerHTML = bars.map(bar => render(bar, prices)).join('') + drawAxis(prices);
+</script>
+</body>
+</html>

@@ -31,11 +31,16 @@ export default function column(bar, prices) {
 	const wickBottom = rowOf(bar.low);
 
 	const rows = prices.map((price) => {
-		const values = bar.rows[price.toFixed(1)];
+		const key = price.toFixed(1);
+		const values = bar.rows[key];
+		const isPoc = bar.poc === key;
+		const winner = isPoc ? (bar.pocSide === 'ask' ? 'ask' : 'bid') : null;
+
 		return `
-			<div class="fp-row">
-				<span class="bid">${values ? values[0] : ''}</span>
-				<span class="ask">${values ? values[1] : ''}</span>
+			<div class="fp-row ${isPoc ? `poc ${winner}` : ''}">
+				<span class="bid ${winner === 'bid' ? 'win' : ''}">${values ? values[0] : ''}</span>
+				<span class="divider"></span>
+				<span class="ask ${winner === 'ask' ? 'win' : ''}">${values ? values[1] : ''}</span>
 			</div>`;
 	}).join('');
 

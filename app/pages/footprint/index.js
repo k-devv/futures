@@ -43,6 +43,7 @@ export default {
 				</section>
 			</div>`;
 
+
 		const tick = async () => {
 			try {
 				const response = await fetch(`/api/footprint?limit=${FETCH_BARS}`, { cache: 'no-store' });
@@ -55,7 +56,10 @@ export default {
 			}
 		};
 
-		this.onResize = () => tick();
+		this.onResize = () => {
+			element.__fit = 0;        // re-measure for the new width
+			tick();
+		};
 		window.addEventListener('resize', this.onResize);
 
 		const start = () => setTimeout(tick, 60);
@@ -118,27 +122,49 @@ async function draw(element, state) {
 		return;
 	}
 
-	// draw, let the browser lay it out, and drop the oldest bar while it overflows.
-	// only the newest bars survive, which is exactly what we want to look at.
+	// how many bars fit is measured once per width, never on every poll -
+	// measuring on every poll is what made the chart appear to dance.
+	if (!element.__fit) {
+		element.__fit = await measureFit(chart, bars);
+	}
+
+	const shown = bars.slice(-element.__fit);
+	renderInto(chart, shown);
+
+	// centre the live price only when the set of bars actually changed
+	const key = shown.map(bar => bar.time).join(',');
+	if (key !== element.__key) {
+		element.__key = key;
+		centrePrice(chart, shown);
+	}
+}
+
+async function measureFit(chart, bars) {
 	let shown = bars;
+
 	for (let guard = 0; guard < 60; guard += 1) {
 		renderInto(chart, shown);
 		await new Promise(resolve => requestAnimationFrame(resolve));
 
 		if (chart.scrollWidth <= chart.clientWidth + 1 || shown.length <= 2) {
-			break;
+			return shown.length;
 		}
 		shown = shown.slice(1);
 	}
 
-	// keep the live price in the middle of the visible prices
+	return shown.length;
+}
+
+function centrePrice(chart, shown) {
 	const last = shown[shown.length - 1];
 	const prices = priceGrid(shown);
 	const row = prices.findIndex(price => Math.abs(price - last.close) < 0.1001);
-	if (row >= 0) {
-		const rowHeight = chart.querySelector('.fp-price')?.getBoundingClientRect().height || 18;
-		chart.scrollTop = Math.max(0, row * rowHeight - chart.clientHeight / 2);
+	if (row < 0) {
+		return;
 	}
+
+	const rowHeight = chart.querySelector('.fp-price')?.getBoundingClientRect().height || 18;
+	chart.scrollTop = Math.max(0, row * rowHeight - chart.clientHeight / 2);
 }
 
 function renderInto(chart, bars) {

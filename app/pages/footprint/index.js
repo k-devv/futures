@@ -73,7 +73,6 @@ function toView(state) {
 	return all.map(bar => ({
 		time: bar.time,
 		current: Boolean(bar.current),
-		verified: bar.verified,
 		poc: bar.poc === null || bar.poc === undefined ? null : Number(bar.poc).toFixed(1),
 		pocSide: bar.pocSide,
 		open: bar.open, close: bar.close, high: bar.high, low: bar.low,

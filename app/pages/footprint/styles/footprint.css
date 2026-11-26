@@ -106,13 +106,10 @@
 .fp-row .ask { text-align: left; padding-left: 8px; color: #34d399; }
 .fp-row .divider { height: 10px; background: rgba(255, 255, 255, 0.05); }
 
-/* POC: the divider moves to the side that won, and that number turns amber */
-.fp-row.poc .divider { background: #fbbf24; height: 14px; }
+/* POC: the winning side turns amber, the other side dims. No lines, no boxes. */
 .fp-row.poc .bid, .fp-row.poc .ask { color: var(--text-dim); }
 .fp-row.poc.bid .bid { color: #fbbf24; font-weight: 600; }
 .fp-row.poc.ask .ask { color: #fbbf24; font-weight: 600; }
-.fp-row.poc.bid { box-shadow: inset 2px 0 0 rgba(251, 191, 36, 0.55); }
-.fp-row.poc.ask { box-shadow: inset -2px 0 0 rgba(251, 191, 36, 0.55); }
 
 
 
@@ -130,8 +127,3 @@
 .fp-foot .v { font-size: 12px; }
 .fp-foot .v.up { color: #34d399; }
 .fp-foot .v.down { color: #fb7185; }
-
-/* the kline check: every closed bar proves itself against Binance */
-.fp-mark { margin-left: 4px; font-size: 9px; }
-.fp-mark.ok { color: #34d399; }
-.fp-mark.bad { color: #fb7185; }

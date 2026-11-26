@@ -46,9 +46,7 @@ export default function column(bar, prices) {
 
 	return `
 		<div class="fp-bar ${bar.current ? 'current' : ''}">
-			<div class="fp-time">${bar.time}<span class="fp-mark ${bar.verified === true ? 'ok' : bar.verified === false ? 'bad' : ''}">
-					${bar.verified === true ? '✓' : bar.verified === false ? '⚠' : ''}
-				</span></div>
+			<div class="fp-time">${bar.time}</div>
 			<div class="fp-body">
 
 				<div class="fp-candle" style="height:calc(var(--row) * ${prices.length})">

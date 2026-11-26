@@ -16,4 +16,4 @@
 @import "./tokens.css";
 @import "./components.css";
 
-@source "../app/**/*.{html,js}";
+@source "../**/*.{html,js}";

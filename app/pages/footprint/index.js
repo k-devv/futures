@@ -16,7 +16,7 @@ import column from './components/column.js';
 
 const STYLE = './pages/footprint/styles/footprint.css';
 const POLL_MS = 2000;
-const COLUMN = 150;      // one bar column: cells + candle + padding
+const AXIS = 70;         // price axis + breathing room
 
 export default {
 	title: 'Footprint',
@@ -43,26 +43,56 @@ export default {
 				</section>
 			</div>`;
 
+		// how many bars fit is measured from the first column actually drawn,
+		// never guessed - a guess shows 4 bars on a wide screen
+		this.columnWidth = 0;
+
 		const tick = async () => {
 			try {
 				const chart = element.querySelector('#fp-chart');
-				const fit = chart ? Math.max(4, Math.floor((chart.clientWidth - 70) / COLUMN)) : 20;
+				// a little slack so the left-most bar is never clipped
+				const fit = this.columnWidth && chart
+					? Math.max(4, Math.floor((chart.clientWidth - AXIS - 8) / (this.columnWidth + 2)))
+					: 10;
+
 				const response = await fetch(`/api/footprint?limit=${fit}`, { cache: 'no-store' });
 				const state = await response.json();
-				if (element.isConnected) {
-					draw(element, state);
+				if (!element.isConnected) {
+					return;
+				}
+
+				draw(element, state);
+
+				const first = element.querySelector('.fp-bar');
+				if (first && !this.columnWidth) {
+					this.columnWidth = first.getBoundingClientRect().width;
+					setTimeout(tick, 0);          // redraw immediately with the real fit
 				}
 			} catch (error) {
 				setStatus(element, 'offline', 'badge-danger');
 			}
 		};
 
-		tick();
+		this.onResize = () => {
+			this.columnWidth = 0;
+			tick();
+		};
+		window.addEventListener('resize', this.onResize);
+
+		const start = () => setTimeout(tick, 60);
+		if (document.querySelector(`link[href="${STYLE}"]`)) {
+			start();
+		} else {
+			const link = document.querySelector(`link[href="${STYLE}"]`) || document.createElement('link');
+			link.addEventListener('load', start, { once: true });
+		}
+
 		this.timer = setInterval(tick, POLL_MS);
 	},
 
 	unmount() {
 		clearInterval(this.timer);
+		window.removeEventListener('resize', this.onResize);
 	},
 };
 
@@ -117,6 +147,15 @@ function draw(element, state) {
 			chart.scrollTop = Math.max(0, row * rowHeight - chart.clientHeight / 2);
 		}
 	}
+}
+
+function render(bars) {
+	const chart = document.getElementById('fp-chart');
+	if (!chart) {
+		return;
+	}
+	const prices = priceGrid(bars);
+	chart.innerHTML = bars.map(bar => column(bar, prices)).join('') + axis(prices);
 }
 
 function setStatus(element, text, tone) {

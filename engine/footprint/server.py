@@ -26,6 +26,7 @@ import bars as footprint
 import tape
 from BALLAST import ballast
 from Imbalance import imbalance
+from VWAP import vwap
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.join(os.path.dirname(os.path.dirname(HERE)), "app")
@@ -251,6 +252,7 @@ def snapshot(limit=None):
 
         return {
             "symbol": tape.SYMBOL,
+            "levels": vwap.levels(tape.SYMBOL),
             "window": _window_of(_state["window"] or 0),
             "bars": finished,
             "current": current,

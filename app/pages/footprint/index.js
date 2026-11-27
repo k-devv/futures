@@ -128,9 +128,9 @@ async function draw(element, state) {
 	if (!element.__colW) {
 		renderInto(chart, bars.slice(-6));
 		const width = chart.querySelector('.fp-bar')?.getBoundingClientRect().width || 0;
-		if (width < 60) {
+		if (width < 120) {
 			renderInto(chart, bars.slice(-6));
-			setTimeout(() => draw(element, state), 250);   // styles were not ready
+			setTimeout(() => draw(element, state), 300);   // styles were not ready
 			return;
 		}
 		element.__colW = width;
@@ -140,15 +140,32 @@ async function draw(element, state) {
 	const fit = Math.max(2, Math.floor((chart.clientWidth - axis) / element.__colW) - 1);
 	const shown = bars.slice(-fit);
 
+	let display = shown;
 	const top = chart.scrollTop;
-	renderInto(chart, shown);
+	renderInto(chart, display);
 	chart.scrollTop = top;
 
+	for (let guard = 0; guard < 6 && chart.scrollWidth > chart.clientWidth; guard += 1) {
+		display = display.slice(1);
+		renderInto(chart, display);
+	}
+
+	// and if there is room, add the next older bar until the width is actually used
+	for (let guard = 0; guard < 10 && display.length < bars.length; guard += 1) {
+		const wider = bars.slice(-(display.length + 1));
+		renderInto(chart, wider);
+		if (chart.scrollWidth > chart.clientWidth) {
+			renderInto(chart, display);
+			break;
+		}
+		display = wider;
+	}
+
 	// centre the live price only when the set of bars actually changed
-	const key = shown.map(bar => bar.time).join(',');
+	const key = display.map(bar => bar.time).join(',');
 	if (key !== element.__key) {
 		element.__key = key;
-		centrePrice(chart, shown);
+		centrePrice(chart, display);
 	}
 }
 

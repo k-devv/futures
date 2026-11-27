@@ -12,7 +12,7 @@
 
 export default function axis(prices) {
 	return `
-		<div class="fp-axis">
+		<div class="fp-axis" style="--rows:${prices.length}">
 			<div class="fp-head-cell"></div>
 			${prices.map(price => `<div class="fp-price">${price.toFixed(1)}</div>`).join('')}
 		</div>`;

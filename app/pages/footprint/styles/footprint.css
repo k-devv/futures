@@ -47,6 +47,8 @@
 /* ---------------- price axis ---------------- */
 .fp-axis {
 	flex: none;
+	align-self: flex-start;                    /* its own height, not the viewport's */
+	height: calc(16px + var(--row) * var(--rows, 30));
 	width: 56px;
 	background: var(--card);
 	border-left: 1px solid rgba(255, 255, 255, 0.06);
@@ -66,7 +68,8 @@
 
 /* ---------------- one bar ---------------- */
 .fp-bar {
-	flex: none;
+	flex: 1 1 0;              /* bars share the width instead of leaving it empty */
+	min-width: 108px;
 	padding: 0 8px;
 	border-right: 1px solid rgba(255, 255, 255, 0.04);
 }
@@ -98,7 +101,7 @@
 .fp-candle .body.down { background: #fb7185; }
 
 /* ---------------- rows ---------------- */
-.fp-rows { flex: none; width: var(--cell); margin-left: 4px; }
+.fp-rows { flex: 1 1 auto; width: var(--cell); margin-left: 4px; }
 .fp-row {
 	height: var(--row);
 	display: grid;

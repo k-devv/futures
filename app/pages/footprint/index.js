@@ -1,11 +1,26 @@
 /*
 ================================================================================
- pages/footprint/index.js  -  the 5m footprint page
+ pages/footprint/index.js  -  the 5m footprint, last four bars
 ================================================================================
- WHAT   : Fetches /api/footprint every 2 s and draws the closed bars plus the one
-          still forming. Candle, bid x ask rows, POC, BALLAST. Nothing else.
- WHY    : The page is a viewer. The server owns the tape and the 5-minute clock;
-          the page owns pixels.
+ WHAT   : Draws the last four 5-minute bars: three closed, one still forming.
+          Each bar is a candle plus its bid x ask row per 0.1, with POC, BALLAST
+          and (once the poller has seen it) IMBALANCE.
+
+ WHY    : A footprint is read left to right as a story: the fight, the verdict,
+          the follow-through, then the live bar. More than that is data to stare
+          at, not information to act on.
+
+ HOW TO SEE MORE BARS AGAIN
+          One constant controls everything:
+
+              const MAX_BARS = 4;
+                            ^ set to 12, 20 or 30 and the chart shows that many.
+                              The server already keeps 30 (KEEP in
+                              engine/footprint/server.py).
+                            ^ the styling is sized for four:
+                              .fp-chart { width: fit-content; height: 420px; }
+                              to go wide again use width: 100% and height: 560px.
+
  WHERE  : app/pages/footprint
  SCALE  : New visual piece -> components/. New data field -> server first.
 ================================================================================
@@ -16,7 +31,9 @@ import column from './components/column.js';
 
 const STYLE = './pages/footprint/styles/footprint.css';
 const POLL_MS = 2000;
-const FETCH_BARS = 30;     // ask for the maximum; the page trims to what fits
+
+/** how many bars the chart holds: 3 closed + the live one */
+const MAX_BARS = 4;
 
 export default {
 	title: 'Footprint',
@@ -34,7 +51,7 @@ export default {
 				<header class="fp-head">
 					<div>
 						<h2>BNB PERP - 5m footprint</h2>
-						<p>5 minutes per bar - bid x ask per 0.1 row - built from the live tape</p>
+						<p>last ${MAX_BARS} bars - bid x ask per 0.1 row - built from the live tape</p>
 					</div>
 					<span class="badge badge-neutral" id="fp-status">connecting</span>
 				</header>
@@ -43,24 +60,17 @@ export default {
 				</section>
 			</div>`;
 
-
 		const tick = async () => {
 			try {
-				const response = await fetch(`/api/footprint?limit=${FETCH_BARS}`, { cache: 'no-store' });
+				const response = await fetch(`/api/footprint?limit=${MAX_BARS}`, { cache: 'no-store' });
 				const state = await response.json();
 				if (element.isConnected) {
-					await draw(element, state);
+					draw(element, state);
 				}
 			} catch (error) {
 				setStatus(element, 'offline', 'badge-danger');
 			}
 		};
-
-		this.onResize = () => {
-			element.__colW = 0;       // re-measure for the new width
-			tick();
-		};
-		window.addEventListener('resize', this.onResize);
 
 		const start = () => setTimeout(tick, 60);
 		if (document.querySelector(`link[href="${STYLE}"]`)) {
@@ -73,7 +83,7 @@ export default {
 				}
 			});
 			observer.observe(document.head, { childList: true });
-			setTimeout(start, 300);        // never wait forever for a stylesheet
+			setTimeout(start, 300);
 		}
 
 		this.timer = setInterval(tick, POLL_MS);
@@ -81,7 +91,6 @@ export default {
 
 	unmount() {
 		clearInterval(this.timer);
-		window.removeEventListener('resize', this.onResize);
 	},
 };
 
@@ -92,7 +101,7 @@ function toView(state) {
 		all.push(state.current);
 	}
 
-	return all.map(bar => ({
+	return all.slice(-MAX_BARS).map(bar => ({
 		time: bar.time,
 		current: Boolean(bar.current),
 		poc: bar.poc === null || bar.poc === undefined ? null : Number(bar.poc).toFixed(1),
@@ -109,7 +118,7 @@ function toView(state) {
 	}));
 }
 
-async function draw(element, state) {
+function draw(element, state) {
 	const chart = element.querySelector('#fp-chart');
 	if (!chart) {
 		return;
@@ -123,55 +132,28 @@ async function draw(element, state) {
 		return;
 	}
 
-	// one real column is measured, then the fit is arithmetic on that width.
-	// measuring by overflow was unreliable before the first layout.
-	if (!element.__colW) {
-		renderInto(chart, bars.slice(-6));
-		const width = chart.querySelector('.fp-bar')?.getBoundingClientRect().width || 0;
-		if (width < 120) {
-			renderInto(chart, bars.slice(-6));
-			setTimeout(() => draw(element, state), 300);   // styles were not ready
-			return;
-		}
-		element.__colW = width;
-	}
-
-	const axis = 56;
-	const fit = Math.max(2, Math.floor((chart.clientWidth - axis) / element.__colW) - 1);
-	const shown = bars.slice(-fit);
-
-	let display = shown;
 	const top = chart.scrollTop;
-	renderInto(chart, display);
+	const prices = priceGrid(bars);
+	chart.innerHTML = bars.map(bar => column(bar, prices)).join('') + axis(prices);
 	chart.scrollTop = top;
 
-	for (let guard = 0; guard < 6 && chart.scrollWidth > chart.clientWidth; guard += 1) {
-		display = display.slice(1);
-		renderInto(chart, display);
-	}
-
-	// and if there is room, add the next older bar until the width is actually used
-	for (let guard = 0; guard < 10 && display.length < bars.length; guard += 1) {
-		const wider = bars.slice(-(display.length + 1));
-		renderInto(chart, wider);
-		if (chart.scrollWidth > chart.clientWidth) {
-			renderInto(chart, display);
-			break;
-		}
-		display = wider;
-	}
-
-	// centre the live price only when the set of bars actually changed
-	const key = display.map(bar => bar.time).join(',');
+	// centre the live price when the set of bars changes
+	const key = bars.map(bar => bar.time).join(',');
 	if (key !== element.__key) {
 		element.__key = key;
-		centrePrice(chart, display);
+		centrePrice(chart, bars, prices);
 	}
 }
 
-function renderInto(chart, bars) {
-	const prices = priceGrid(bars);
-	chart.innerHTML = bars.map(bar => column(bar, prices)).join('') + axis(prices);
+function centrePrice(chart, bars, prices) {
+	const last = bars[bars.length - 1];
+	const row = prices.findIndex(price => Math.abs(price - last.close) < 0.1001);
+	if (row < 0) {
+		return;
+	}
+
+	const rowHeight = chart.querySelector('.fp-price')?.getBoundingClientRect().height || 18;
+	chart.scrollTop = Math.max(0, row * rowHeight - chart.clientHeight / 2);
 }
 
 function setStatus(element, text, tone) {

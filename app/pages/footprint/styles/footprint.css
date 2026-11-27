@@ -27,13 +27,15 @@
 /* ---------------- the chart ---------------- */
 .fp-chart {
 	--row: 18px;                 /* one price step */
-	--chart-h: 560px;            /* fixed viewport height - scrolls inside */
+	--chart-h: 420px;            /* fixed viewport height - scrolls inside */
 	--cell: 96px;                /* width of the bid x ask pair */
 	display: flex;
 	padding: 14px 16px;
 	border: 1px solid var(--line);
 	border-radius: 12px;
 	background: var(--card);
+	width: fit-content;            /* four bars wide, never the whole page */
+	max-width: 100%;
 	height: var(--chart-h);        /* fixed: the chart never eats the page */
 	overflow-y: auto;
 	overflow-x: hidden;
@@ -68,7 +70,7 @@
 
 /* ---------------- one bar ---------------- */
 .fp-bar {
-	flex: 1 1 0;              /* bars share the width instead of leaving it empty */
+	flex: none;               /* four fixed columns: the grid is small by design */
 	min-width: 108px;
 	padding: 0 8px;
 	border-right: 1px solid rgba(255, 255, 255, 0.04);
@@ -101,7 +103,7 @@
 .fp-candle .body.down { background: #fb7185; }
 
 /* ---------------- rows ---------------- */
-.fp-rows { flex: 1 1 auto; width: var(--cell); margin-left: 4px; }
+.fp-rows { flex: none; width: var(--cell); margin-left: 4px; }
 .fp-row {
 	height: var(--row);
 	display: grid;

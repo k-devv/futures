@@ -25,17 +25,44 @@
 .fp-head p { margin: 3px 0 0; font-size: 11px; color: var(--text-subtle); }
 
 /* ---------------- the chart ---------------- */
+.fp-wrap { width: fit-content; max-width: 100%; --colw: 136px; --row: 18px; }
+
+/* the strip above the grid: time, BALLAST, IMBALANCE - aligned to the columns */
+.fp-headrow {
+	display: flex;
+	align-items: flex-end;
+	padding: 0 16px;
+	margin-bottom: 4px;
+}
+.fp-head-axis { width: 56px; flex: none; }
+.fp-head-bar {
+	width: var(--colw);
+	flex: none;
+	padding: 0 8px;
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 6px;
+	font-size: 10px;
+	font-variant-numeric: tabular-nums;
+}
+.fp-head-bar .b, .fp-head-bar .i { min-width: 26px; text-align: right; }
+.fp-head-bar .up { color: #34d399; }
+.fp-head-bar .down { color: #fb7185; }
+.fp-head-bar .flat { color: var(--text-subtle); }
+.fp-head-bar .none { color: transparent; }
+
 .fp-chart {
+	--colw: 136px;               /* one bar column, header included */
 	--row: 18px;                 /* one price step */
 	--chart-h: 420px;            /* fixed viewport height - scrolls inside */
 	--cell: 96px;                /* width of the bid x ask pair */
 	display: flex;
+	position: relative;
 	padding: 14px 16px;
 	border: 1px solid var(--line);
 	border-radius: 12px;
 	background: var(--card);
-	width: fit-content;            /* four bars wide, never the whole page */
-	max-width: 100%;
 	height: var(--chart-h);        /* fixed: the chart never eats the page */
 	overflow-y: auto;
 	overflow-x: hidden;
@@ -71,7 +98,7 @@
 /* ---------------- one bar ---------------- */
 .fp-bar {
 	flex: none;               /* four fixed columns: the grid is small by design */
-	min-width: 108px;
+	width: var(--colw);
 	padding: 0 8px;
 	border-right: 1px solid rgba(255, 255, 255, 0.04);
 }
@@ -103,7 +130,7 @@
 .fp-candle .body.down { background: #fb7185; }
 
 /* ---------------- rows ---------------- */
-.fp-rows { flex: none; width: var(--cell); margin-left: 4px; }
+.fp-rows { flex: none; width: 100%; }
 .fp-row {
 	height: var(--row);
 	display: grid;
@@ -157,3 +184,89 @@
 .fp-ballast.down, .fp-imbalance.down { color: #fb7185; }
 .fp-ballast.flat, .fp-imbalance.flat { color: var(--text-subtle); }
 .fp-ballast.none, .fp-imbalance.none { color: transparent; }
+
+/* ---------------- the checklist under the grid ---------------- */
+.fp-check {
+	margin-top: 14px;
+	width: 100%;
+	max-width: 620px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.fp-check-line {
+	display: flex;
+	gap: 12px;
+	align-items: baseline;
+	font-size: 12px;
+}
+.fp-check-line .k {
+	width: 132px;
+	flex: none;
+	font-size: 10px;
+	letter-spacing: 0.06em;
+	color: var(--text-subtle);
+}
+.fp-check-line .v { color: var(--text-dim); }
+.fp-check-line .v.ok { color: #34d399; }
+.fp-check-line .v.no { color: #fb7185; }
+.fp-check-line .v.near { color: #fbbf24; }
+.fp-check-line .v.na { color: var(--text-subtle); }
+.fp-check-line .v.up { color: #34d399; }
+.fp-check-line .v.down { color: #fb7185; }
+
+.fp-check-title {
+	margin: 0 0 6px;
+	font-size: 15px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	color: var(--text);
+}
+
+/* ---------------- the candle panel above the grid ---------------- */
+.fp-candles {
+	display: flex;
+	height: 420px;
+	width: 100%;
+	padding: 14px 94px 14px 16px;   /* the newest candle sits over the newest column */
+	margin-bottom: 8px;
+	align-items: stretch;
+	justify-content: flex-end;   /* the candles sit together at the right */
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	background: var(--card);
+	box-sizing: border-box;
+}
+.fp-candle-cell {
+	position: relative;
+	width: 20px;                 /* tight: candles touch, as in a normal chart */
+	flex: none;
+	padding: 0;
+}
+.fp-candle-cell .wick {
+	position: absolute;
+	left: 10px;                 /* the candle sits on the right of its column */
+	width: 1px;
+	background: rgba(148, 163, 184, 0.55);
+}
+.fp-candle-cell .body {
+	position: absolute;
+	left: 3px;                  /* next to the price axis, not the left edge */
+	width: 14px;
+	border-radius: 1px;
+}
+.fp-candle-cell .body.up { background: #34d399; }
+.fp-candle-cell .body.down { background: #fb7185; }
+.fp-candle-cell.current .body { box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.55); }
+.fp-candle-axis { width: 56px; flex: none; }
+
+/* checklist values: time and BALLAST for the closed bar and the live one */
+.fp-check-line .v .t { color: var(--text-subtle); margin-right: 6px; }
+.fp-check-line .v .ok { color: #34d399; }
+.fp-check-line .v .no { color: #fb7185; }
+.fp-check-line .v .near { color: #fbbf24; }
+.fp-check-line .v .na { color: var(--text-subtle); }
+.fp-check-line .v .live { color: var(--text-subtle); margin-left: 6px; font-size: 10px; }
+.fp-check-line .v .sep { color: rgba(255, 255, 255, 0.12); margin: 0 12px; }
+
+.fp-check-line .v .say { color: var(--text-dim); }

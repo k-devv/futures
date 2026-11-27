@@ -17,6 +17,7 @@
 import asyncio
 import json
 import os
+import sys
 import threading
 import time
 import urllib.request
@@ -75,9 +76,22 @@ def on_trade(price, qty, buyer_maker, ms):
 
 
 def run_tape():
-    async def main():
-        await tape.stream(on_trade, quiet=True)
-    asyncio.run(main())
+    """
+    Keep the socket up forever.
+
+    tape.stream() reconnects on its own, but an exception escaping the async
+    runtime (a reset during a ping, for example) would end this thread and the
+    tape would go silent while the server still looks alive. This loop makes
+    that impossible: whatever happens, it starts again two seconds later.
+    """
+    while True:
+        try:
+            async def main():
+                await tape.stream(on_trade, quiet=True)
+            asyncio.run(main())
+        except Exception as error:
+            print(f"tape supervisor restart: {type(error).__name__}", flush=True)
+        time.sleep(2)
 
 
 # ------------------------------------------------------------------ binance
@@ -220,44 +234,96 @@ def _dedupe(trades):
     return unique
 
 
+def _ballast_filler():
+    """
+    Keep every recent bar's open interest filled in.
+
+    Still one source: this only asks the same public endpoint again, because
+    Binance publishes a window's row a minute or two after the window closes.
+    Failures are swallowed on purpose - a network hiccup must not kill the loop.
+    """
+    while True:
+        try:
+            with _lock:
+                recent = list(_state["finished"][-6:])
+
+            if any(item.get("ballast") is None for item in recent):
+                ballast.attach(recent, tape.SYMBOL)
+        except Exception:
+            pass
+
+        time.sleep(20)
+
+
 def snapshot(limit=None):
-    """The chart's whole world: closed bars from Binance, plus the forming one."""
+    """
+    The chart's whole world: closed bars from Binance, plus the forming one.
+
+    The lock is held only to copy state. Nothing that touches the network is
+    called while holding it - a slow exchange call must never freeze the tape.
+    """
     with _lock:
         finished = list(_state["finished"])
+        trades = list(_state["trades"])
+        window = _state["window"]
+        last_fill = _state["lastFill"]
 
-        current = None
-        # a bar closes before Binance publishes the next 5m OI row, so its BALLAST
-        # can be missing at first. Top it up, throttled, until the row exists.
-        global _last_ballast_fill
-        if finished and time.time() - _last_ballast_fill > 60:
-            recent = finished[-6:]
-            if any(bar.get("ballast") is None for bar in recent):
-                ballast.attach(recent, tape.SYMBOL)
-                _last_ballast_fill = time.time()
-                finished = list(_state["finished"])
+    current = None
+    if trades:
+        made = footprint.bars_from_trades(_dedupe(trades), WINDOW_MS)
+        if made:
+            current = made[0]
+            current["time"] = time.strftime("%H:%M", time.localtime(current["t"] / 1000))
+            current["current"] = True
 
-        imbalance.attach([bar for bar in finished if bar.get("imbalance") is None][-6:])
+    if limit:
+        finished = finished[-limit:]
 
-        if _state["trades"]:
-            made = footprint.bars_from_trades(_dedupe(_state["trades"]), WINDOW_MS)
-            if made:
-                current = made[0]
-                current["time"] = time.strftime("%H:%M", time.localtime(current["t"] / 1000))
-                current["current"] = True
-                ballast.attach([current], tape.SYMBOL)
-                imbalance.attach([current])
+    levels = vwap.levels(tape.SYMBOL)
 
-        if limit:
-            finished = finished[-limit:]
+    return {
+        "symbol": tape.SYMBOL,
+        "levels": levels,
+        "window": _window_of(window or 0),
+        "bars": finished,
+        "current": current,
+        "live": bool(last_fill) and (time.time() * 1000 - last_fill < 20000),
+    }
 
-        return {
-            "symbol": tape.SYMBOL,
-            "levels": vwap.levels(tape.SYMBOL),
-            "window": _window_of(_state["window"] or 0),
-            "bars": finished,
-            "current": current,
-            "live": bool(_state["lastFill"]) and (time.time() * 1000 - _state["lastFill"] < 20000),
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ACCOUNT"))
+
+from account import usdt, positions   # noqa: E402  the only account reader
+
+LIVE_TRADING = os.environ.get("LIVE_TRADING") == "1"
+_balance = {"at": 0, "value": None}
+
+
+def live_balance():
+    """
+    The real futures wallet and PnL, read through engine/ACCOUNT/account.py.
+
+    Output {"wallet", "available", "pnl", "positions"} or {"error": "..."}
+    Cached 15 s: the header does not need signed calls every second.
+    """
+    now = time.time()
+    if _balance["value"] and now - _balance["at"] < 15:
+        return _balance["value"]
+
+    try:
+        wallet = usdt()
+        open_positions = positions()
+        value = {
+            "wallet": wallet["wallet"],
+            "available": wallet["available"],
+            "pnl": round(sum(row["unrealized"] for row in open_positions), 4),
+            "positions": len(open_positions),
         }
+        _balance.update(at=now, value=value)
+        return value
+    except Exception as error:
+        return {"error": f"{type(error).__name__}: {error}"}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -271,6 +337,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split("?")[0]
+
+        if path == "/api/balance":
+            self._send(200, json.dumps(live_balance()).encode())
+            return
 
         if path == "/api/footprint":
             query = self.path.split("?")[1] if "?" in self.path else ""
@@ -294,15 +364,48 @@ class Handler(BaseHTTPRequestHandler):
         with open(full, "rb") as handle:
             self._send(200, handle.read(), ctype)
 
+    def do_POST(self):
+        """
+        One order route, one switch.
+
+        POST /api/order  {"side": "BUY", "qty": 0.01, "entry": 556.0,
+                          "stop": 555.6, "target": 556.8}
+
+        Refused with 403 unless the server was started with LIVE_TRADING=1.
+        Refused with 400 on any malformed body. All the actual trading rules
+        live in engine/ACCOUNT/trade.py - this route only forwards.
+        """
+        if self.path.split("?")[0] != "/api/order":
+            self._send(404, b"not found", "text/plain")
+            return
+
+        if not LIVE_TRADING:
+            self._send(403, json.dumps({
+                "error": "live trading is off",
+                "hint": "start the server with LIVE_TRADING=1 to enable",
+            }).encode())
+            return
+
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+            body = json.loads(self.rfile.read(length) or b"{}")
+            from trade import open_trade
+
+            result = open_trade(
+                body["side"], body["qty"], body["entry"], body["stop"], body["target"],
+            )
+            self._send(200, json.dumps({"result": result}).encode())
+        except Exception as error:
+            self._send(400, json.dumps({"error": f"{type(error).__name__}: {error}"}).encode())
+
     def log_message(self, *args):
         pass
 
 
 if __name__ == "__main__":
-    ballast.start(tape.SYMBOL)
-    imbalance.start(tape.SYMBOL)
     backfill()
     seed_current()
     threading.Thread(target=run_tape, daemon=True).start()
+    threading.Thread(target=_ballast_filler, daemon=True).start()
     print(f"FOOTPRINT  http://127.0.0.1:{PORT}  (/api/footprint + app)", flush=True)
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

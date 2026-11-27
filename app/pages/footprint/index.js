@@ -1,25 +1,20 @@
 /*
 ================================================================================
- pages/footprint/index.js  -  the 5m footprint, last four bars
+ pages/footprint/index.js  -  the 5m footprint, last four bars, OI only
 ================================================================================
- WHAT   : Draws the last four 5-minute bars: three closed, one still forming.
-          Each bar is a candle plus its bid x ask row per 0.1, with POC, BALLAST
-          and (once the poller has seen it) IMBALANCE.
+ WHAT   : Draws the last four 5-minute bars - three closed, one live - as a
+          candle panel above and a bid x ask grid below, then one checklist line:
+          the newest open-interest number Binance has published, in BNB.
 
- WHY    : A footprint is read left to right as a story: the fight, the verdict,
-          the follow-through, then the live bar. More than that is data to stare
-          at, not information to act on.
+ WHY    : Open interest is the one number that shows whether money stayed in the
+          market or left it. Everything else on this page exists to show where
+          that money fought.
 
  HOW TO SEE MORE BARS AGAIN
-          One constant controls everything:
-
-              const MAX_BARS = 4;
-                            ^ set to 12, 20 or 30 and the chart shows that many.
-                              The server already keeps 30 (KEEP in
-                              engine/footprint/server.py).
-                            ^ the styling is sized for four:
-                              .fp-chart { width: fit-content; height: 420px; }
-                              to go wide again use width: 100% and height: 560px.
+              const MAX_BARS = 4;      <- set 12, 20 or 30
+          the styling is sized for four:
+              .fp-chart { --colw: 136px }  and the candle panel at 50% height.
+          to go wide again use width: 100% on .fp-wrap.
 
  WHERE  : app/pages/footprint
  SCALE  : New visual piece -> components/. New data field -> server first.
@@ -27,13 +22,13 @@
 */
 
 import axis from './components/axis.js';
+import candles from './components/candles.js';
 import column from './components/column.js';
 
 const STYLE = './pages/footprint/styles/footprint.css';
 const POLL_MS = 2000;
-
-/** how many bars the chart holds: 3 closed + the live one */
 const MAX_BARS = 4;
+const PANEL_HEIGHT = 420;
 
 export default {
 	title: 'Footprint',
@@ -55,8 +50,20 @@ export default {
 					</div>
 					<span class="badge badge-neutral" id="fp-status">connecting</span>
 				</header>
-				<section class="fp-chart" id="fp-chart">
-					<p class="fp-wait">waiting for the tape...</p>
+
+				<section class="fp-wrap">
+					<div class="fp-candles" id="fp-candles"></div>
+					<section class="fp-chart" id="fp-chart">
+						<p class="fp-wait">waiting for the tape...</p>
+					</section>
+				</section>
+
+				<section class="fp-check" id="fp-check">
+					<h3 class="fp-check-title">Checklist</h3>
+					<div class="fp-check-line" id="fp-ballast">
+						<span class="k">1 OPEN INTEREST</span>
+						<span class="v">waiting for open interest...</span>
+					</div>
 				</section>
 			</div>`;
 
@@ -107,7 +114,6 @@ function toView(state) {
 		poc: bar.poc === null || bar.poc === undefined ? null : Number(bar.poc).toFixed(1),
 		pocSide: bar.pocSide,
 		ballast: bar.ballast,
-		imbalance: bar.imbalance,
 		open: bar.open, close: bar.close, high: bar.high, low: bar.low,
 		rows: Object.fromEntries(
 			Object.entries(bar.rows || {}).map(([price, volume]) => [
@@ -134,8 +140,23 @@ function draw(element, state) {
 
 	const top = chart.scrollTop;
 	const prices = priceGrid(bars);
+
+	// rows never shrink below readable size: in a fast move the grid scrolls
+	const rowHeight = 18;
+	const panelHeight = Math.min(prices.length * rowHeight + 28, PANEL_HEIGHT);
+	chart.style.setProperty('--row', `${rowHeight}px`);
+	chart.style.height = `${panelHeight}px`;
+
+	const candlePanel = element.querySelector('#fp-candles');
+	if (candlePanel) {
+		candlePanel.style.height = `${Math.round(panelHeight * 0.5)}px`;
+	}
+
 	chart.innerHTML = bars.map(bar => column(bar, prices)).join('') + axis(prices);
 	chart.scrollTop = top;
+
+	paintCandles(element, bars);
+	paintCheck(element, bars);
 
 	// centre the live price when the set of bars changes
 	const key = bars.map(bar => bar.time).join(',');
@@ -143,6 +164,46 @@ function draw(element, state) {
 		element.__key = key;
 		centrePrice(chart, bars, prices);
 	}
+}
+
+/* the candle panel: same columns, its own vertical scale */
+function paintCandles(element, bars) {
+	const panel = element.querySelector('#fp-candles');
+	if (!panel) {
+		return;
+	}
+
+	const low = Math.min(...bars.map(bar => bar.low));
+	const high = Math.max(...bars.map(bar => bar.high));
+
+	panel.innerHTML = bars.map(bar => candles(bar, low, high)).join('') + '<div class="fp-candle-axis"></div>';
+}
+
+/* the one line under the grid: the newest open-interest number Binance gave us */
+function paintCheck(element, bars) {
+	const node = element.querySelector('#fp-ballast .v');
+	if (!node) {
+		return;
+	}
+
+	const withOi = [...bars].reverse().find(bar => bar.ballast);
+	if (!withOi) {
+		node.innerHTML = '<span class="na">no open interest yet</span>';
+		node.className = 'v';
+		return;
+	}
+
+	const change = Math.round(withOi.ballast.change);
+	const tone = change > 0 ? 'ok' : change < 0 ? 'no' : 'near';
+	const sign = change > 0 ? '+' : '';
+	const word = change > 0 ? 'BNB added' : change < 0 ? 'BNB left' : 'BNB flat';
+	const received = withOi.ballast.received
+		? new Date(withOi.ballast.received).toTimeString().slice(0, 8)
+		: '--:--:--';
+
+	node.innerHTML = `<span class="t">arrived ${received}</span> `
+		+ `<span class="${tone}">${sign}${change}</span> <span class="say">${word}</span>`;
+	node.className = 'v';
 }
 
 function centrePrice(chart, bars, prices) {

@@ -42,14 +42,44 @@ function render() {
 }
 
 /* ------------------------------------------------------------------ balance */
-// dummy until the account feed exists: one constant, one formatter, one element
-const DUMMY_BALANCE = 5000;
+// one rate, from your own deposit: 23.70 USDT came to KSh 3,100
+const KES_PER_USDT = 130.80;
+// the real futures wallet, read by the server with the live keys
+async function paintBalance() {
+	const node = $('balance');
+	if (!node) {
+		return;
+	}
 
-function paintBalance(usdt = DUMMY_BALANCE) {
-	$('balance').innerHTML = `${usdt.toLocaleString('en-US', {
-		minimumFractionDigits: 2,
-		maximumFractionDigits: 2,
-	})} <span class="text-micro text-subtle">USDT</span>`;
+	try {
+		const response = await fetch('/api/balance', { cache: 'no-store' });
+		const value = await response.json();
+
+		if (typeof value.available !== 'number') {
+			node.innerHTML = '<span class="text-micro text-subtle">KSh --</span>';
+			return;
+		}
+
+		const money = (amount) => amount.toLocaleString('en-US', {
+			minimumFractionDigits: 2,
+			maximumFractionDigits: 2,
+		});
+
+		const pnl = Number(value.pnl || 0);
+		const colour = pnl > 0 ? '#34d399' : pnl < 0 ? '#fb7185' : '#8b94a7';
+		const sign = pnl > 0 ? '+' : '';
+
+		const kes = (amount) => (amount * KES_PER_USDT).toLocaleString('en-US', {
+			minimumFractionDigits: 0,
+			maximumFractionDigits: 0,
+		});
+
+		node.innerHTML = `<span class="text-micro text-subtle">KSh</span> ${kes(value.available)}`
+			+ `<span style="margin-left:10px;font-size:12px;font-variant-numeric:tabular-nums;color:${colour}">`
+			+ `${sign}KSh ${kes(Math.abs(pnl))}</span>`;
+	} catch (error) {
+		node.innerHTML = '<span class="text-micro text-subtle">KSh --</span>';
+	}
 }
 
 /* ------------------------------------------------------------------ clock */
@@ -64,6 +94,7 @@ addEventListener('DOMContentLoaded', () => {
 	render();
 	tick();
 	paintBalance();
+	setInterval(paintBalance, 15000);
 	setInterval(tick, 1000);
 
 	// the drawer: two buttons, one class, nothing else

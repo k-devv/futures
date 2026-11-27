@@ -33,12 +33,19 @@
           A bar's BALLAST is  last value in the window  -  first value in the window.
           Both numbers are Binance's; we only subtract them.
 
- COST   : one weight-1 request every 10 s while running (~0.1 weight/s), and one
+ PUBLICATION TIMES
+          Binance publishes each 5m open-interest row roughly three minutes after
+          the window closes. We stamp the FIRST time we see a row and keep it, so
+          the number the chart shows is the moment the data actually arrived, not
+          the moment we happened to refresh.
+
+COST   : one weight-1 request every 10 s while running (~0.1 weight/s), and one
           history request per batch of bars that has no polled samples.
 ================================================================================
 """
 
 import json
+import os
 import threading
 import time
 import urllib.request
@@ -47,13 +54,64 @@ MARKET = "https://fapi.binance.com"
 NOW = "/fapi/v1/openInterest"
 HIST = "/futures/data/openInterestHist"
 
-POLL_SECONDS = 10      # one snapshot every 10 s: 30 per bar, weight 30
+POLL_SECONDS = 10
+BAR_MS = 5 * 60 * 1000      # one snapshot every 10 s: 30 per bar, weight 30
 WINDOW_MS = 5 * 60 * 1000
 
 _lock = threading.Lock()
 _samples = {}          # window_start_ms -> [{"t": ms, "oi": float}, ...]
 _thread = None
 _symbol = None
+
+
+# ---------------------------------------------------- when a row was first seen
+_SEEN_PATH = os.path.join(os.path.dirname(__file__), "seen.json")
+_seen = {}
+
+
+def _load_seen():
+    """First-seen timestamps survive a restart, so 13:38 stays 13:38."""
+    global _seen
+    try:
+        with open(_SEEN_PATH, encoding="utf-8") as handle:
+            _seen = {int(key): int(value) for key, value in json.load(handle).items()}
+    except Exception:
+        _seen = {}
+
+
+def _save_seen():
+    try:
+        with open(_SEEN_PATH, "w", encoding="utf-8") as handle:
+            json.dump({str(key): value for key, value in _seen.items()}, handle)
+    except Exception:
+        pass
+
+
+def note(rows):
+    """
+    Remember when each row was first seen. Called on every fetch.
+
+    Input   rows from Binance (oldest first)
+    Effect  stamps the rows we had not seen before and saves the file
+    """
+    now = int(time.time() * 1000)
+    added = False
+
+    for row in rows:
+        if row["t"] not in _seen:
+            _seen[row["t"]] = now
+            added = True
+
+    if added:
+        _save_seen()
+
+
+def published_at(row_time):
+    """When we first saw that row, or None."""
+    return _seen.get(int(row_time))
+
+
+_load_seen()
 
 
 # ------------------------------------------------------------------ primitives
@@ -84,6 +142,9 @@ def history(symbol, period="5m", limit=30):
     Input   symbol, period ("5m", "15m", "30m", "1h", ...), limit (<= 500)
     Output  [{"t": window_start_ms, "oi": float}, ...] oldest first
     Cost    weight 1, and the series only goes back 30 days
+
+    Warning: Binance returns the OLDEST rows up to limit, not the newest. Ask for
+    a large window and match by timestamp, never assume the last row is "now".
 
     Used for bars that closed before this process started, and for backfills.
     The 5m series gives the same numbers the live endpoint would have given us,
@@ -207,11 +268,20 @@ def attach(bars, symbol):
     if not bars:
         return bars
 
-    missing = [bar for bar in bars if from_samples(bar["t"]) is None]
-    rows = history(symbol, "5m", limit=min(500, len(bars) + 5)) if missing else []
+    # ONE source: Binance's own 5m open-interest series.
+    # we do not poll our own snapshot any more - the endpoint is the truth, even
+    # though it means the forming bar has no number until its row is published.
+    rows = history(symbol, "5m", limit=500) if bars else []
+
+    note(rows)                                # stamp any row we had not seen yet
+    received = int(time.time() * 1000)
 
     for bar in bars:
-        bar["ballast"] = from_samples(bar["t"]) or from_history(bar["t"], rows)
+        value = from_history(bar["t"], rows)
+        if value:
+            # the confirming row is the one after the bar
+            value["received"] = published_at(bar["t"] + BAR_MS) or received
+        bar["ballast"] = value
     return bars
 
 

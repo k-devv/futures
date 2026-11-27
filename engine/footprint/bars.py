@@ -35,6 +35,11 @@ def bars_from_trades(trades, bar_ms=60000):
     """
     minutes = {}
     for price, qty, buyer_maker, ms in trades:
+        # a zero or negative price is never a real fill; one would stretch the
+        # whole price grid to 0 and bury the chart
+        if price <= 0 or qty <= 0:
+            continue
+
         minute = ms // bar_ms
         bar = minutes.get(minute)
         if bar is None:

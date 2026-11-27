@@ -98,6 +98,7 @@ function toView(state) {
 		poc: bar.poc === null || bar.poc === undefined ? null : Number(bar.poc).toFixed(1),
 		pocSide: bar.pocSide,
 		ballast: bar.ballast,
+		imbalance: bar.imbalance,
 		open: bar.open, close: bar.close, high: bar.high, low: bar.low,
 		rows: Object.fromEntries(
 			Object.entries(bar.rows || {}).map(([price, volume]) => [

@@ -47,6 +47,14 @@ export default function column(bar, prices) {
 	return `
 		<div class="fp-bar ${bar.current ? 'current' : ''}">
 			<div class="fp-time">${bar.time}</div>
+			<div class="fp-foot">
+				<span class="fp-ballast ${bar.ballast ? (bar.ballast.change > 0 ? 'up' : bar.ballast.change < 0 ? 'down' : 'flat') : 'none'}">
+					${bar.ballast ? `${bar.ballast.change > 0 ? '+' : ''}${Math.round(bar.ballast.change)}` : ''}
+				</span>
+				<span class="fp-imbalance ${bar.imbalance ? (bar.imbalance.close > 0 ? 'up' : bar.imbalance.close < 0 ? 'down' : 'flat') : 'none'}">
+					${bar.imbalance ? `${bar.imbalance.close > 0 ? '+' : ''}${Math.round(bar.imbalance.close * 100)}%` : ''}
+				</span>
+			</div>
 			<div class="fp-body">
 
 				<div class="fp-candle" style="height:calc(var(--row) * ${prices.length})">
@@ -58,8 +66,6 @@ export default function column(bar, prices) {
 				<div class="fp-rows">${rows}</div>
 			</div>
 
-			<div class="fp-ballast ${bar.ballast ? (bar.ballast.change > 0 ? 'up' : bar.ballast.change < 0 ? 'down' : 'flat') : 'none'}">
-				${bar.ballast ? `${bar.ballast.change > 0 ? '+' : ''}${Math.round(bar.ballast.change)}` : ''}
-			</div>
+
 		</div>`;
 }

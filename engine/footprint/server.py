@@ -25,6 +25,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import bars as footprint
 import tape
 from BALLAST import ballast
+from Imbalance import imbalance
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.join(os.path.dirname(os.path.dirname(HERE)), "app")
@@ -175,6 +176,7 @@ def backfill():
             seeded.append(bar)
 
     ballast.attach(seeded, tape.SYMBOL)
+    imbalance.attach(seeded)
 
     with _lock:
         _state["finished"] = seeded[-KEEP:]
@@ -233,6 +235,8 @@ def snapshot(limit=None):
                 _last_ballast_fill = time.time()
                 finished = list(_state["finished"])
 
+        imbalance.attach([bar for bar in finished if bar.get("imbalance") is None][-6:])
+
         if _state["trades"]:
             made = footprint.bars_from_trades(_dedupe(_state["trades"]), WINDOW_MS)
             if made:
@@ -240,6 +244,7 @@ def snapshot(limit=None):
                 current["time"] = time.strftime("%H:%M", time.localtime(current["t"] / 1000))
                 current["current"] = True
                 ballast.attach([current], tape.SYMBOL)
+                imbalance.attach([current])
 
         if limit:
             finished = finished[-limit:]
@@ -293,6 +298,7 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     ballast.start(tape.SYMBOL)
+    imbalance.start(tape.SYMBOL)
     backfill()
     seed_current()
     threading.Thread(target=run_tape, daemon=True).start()

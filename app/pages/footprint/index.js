@@ -57,7 +57,7 @@ export default {
 		};
 
 		this.onResize = () => {
-			element.__fit = 0;        // re-measure for the new width
+			element.__colW = 0;       // re-measure for the new width
 			tick();
 		};
 		window.addEventListener('resize', this.onResize);
@@ -123,18 +123,25 @@ async function draw(element, state) {
 		return;
 	}
 
-	// how many bars fit is measured once per width, never on every poll -
-	// measuring on every poll is what made the chart appear to dance.
-	if (!element.__fit) {
-		element.__fit = await measureFit(chart, bars);
+	// one real column is measured, then the fit is arithmetic on that width.
+	// measuring by overflow was unreliable before the first layout.
+	if (!element.__colW) {
+		renderInto(chart, bars.slice(-6));
+		const width = chart.querySelector('.fp-bar')?.getBoundingClientRect().width || 0;
+		if (width < 60) {
+			renderInto(chart, bars.slice(-6));
+			setTimeout(() => draw(element, state), 250);   // styles were not ready
+			return;
+		}
+		element.__colW = width;
 	}
 
-	const shown = bars.slice(-element.__fit);
+	const axis = 56;
+	const fit = Math.max(2, Math.floor((chart.clientWidth - axis) / element.__colW) - 1);
+	const shown = bars.slice(-fit);
 
-	// keep the reader's vertical place across a redraw, and never allow horizontal drift
 	const top = chart.scrollTop;
 	renderInto(chart, shown);
-	chart.scrollLeft = 0;
 	chart.scrollTop = top;
 
 	// centre the live price only when the set of bars actually changed
@@ -143,34 +150,6 @@ async function draw(element, state) {
 		element.__key = key;
 		centrePrice(chart, shown);
 	}
-}
-
-async function measureFit(chart, bars) {
-	let shown = bars;
-
-	for (let guard = 0; guard < 60; guard += 1) {
-		renderInto(chart, shown);
-		await new Promise(resolve => requestAnimationFrame(resolve));
-
-		if (chart.scrollWidth <= chart.clientWidth + 1 || shown.length <= 2) {
-			return shown.length;
-		}
-		shown = shown.slice(1);
-	}
-
-	return shown.length;
-}
-
-function centrePrice(chart, shown) {
-	const last = shown[shown.length - 1];
-	const prices = priceGrid(shown);
-	const row = prices.findIndex(price => Math.abs(price - last.close) < 0.1001);
-	if (row < 0) {
-		return;
-	}
-
-	const rowHeight = chart.querySelector('.fp-price')?.getBoundingClientRect().height || 18;
-	chart.scrollTop = Math.max(0, row * rowHeight - chart.clientHeight / 2);
 }
 
 function renderInto(chart, bars) {

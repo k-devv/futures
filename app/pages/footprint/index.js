@@ -64,6 +64,10 @@ export default {
 						<span class="k">1 OPEN INTEREST</span>
 						<span class="v">waiting for open interest...</span>
 					</div>
+					<div class="fp-check-line" id="fp-oirow">
+						<span class="k">LAST 5m ROW</span>
+						<span class="v">waiting for Binance...</span>
+					</div>
 				</section>
 			</div>`;
 
@@ -156,7 +160,7 @@ function draw(element, state) {
 	chart.scrollTop = top;
 
 	paintCandles(element, bars);
-	paintCheck(element, bars);
+	paintCheck(element, bars, state);
 
 	// centre the live price when the set of bars changes
 	const key = bars.map(bar => bar.time).join(',');
@@ -179,31 +183,63 @@ function paintCandles(element, bars) {
 	panel.innerHTML = bars.map(bar => candles(bar, low, high)).join('') + '<div class="fp-candle-axis"></div>';
 }
 
-/* the one line under the grid: the newest open-interest number Binance gave us */
-function paintCheck(element, bars) {
-	const node = element.querySelector('#fp-ballast .v');
-	if (!node) {
+/*
+   THE CHECKLIST: two lines, two different jobs.
+
+   1 OPEN INTEREST   live OI, sampled every 5 seconds. THIS is the signal.
+                     change5m = OI now vs five minutes ago. A break confirms
+                     against this line, never against the row below.
+   LAST 5m ROW       the official published 5m row. It arrives 1-3 minutes late
+                     and is kept only as the settled record for the log.
+
+   Before this, entries waited for the row and therefore entered 2-5 minutes
+   after the move. We do not do that any more.
+*/
+function paintCheck(element, bars, state) {
+	const live = element.querySelector('#fp-ballast .v');
+	const official = element.querySelector('#fp-oirow .v');
+
+	const sample = state.liveOi;
+	if (live) {
+		if (!sample) {
+			live.innerHTML = '<span class="na">sampling open interest...</span>';
+			live.className = 'v';
+		} else {
+			const change = Math.round(sample.change5m);
+			const tone = change > 0 ? 'ok' : change < 0 ? 'no' : 'near';
+			const sign = change > 0 ? '+' : '';
+			const word = change > 0 ? 'BNB added' : change < 0 ? 'BNB left' : 'BNB flat';
+			const at = new Date(sample.at).toTimeString().slice(0, 8);
+
+			live.innerHTML = `<span class="t">${at}</span> `
+				+ `<span class="${tone}">${sign}${change}</span> <span class="say">${word}</span>`
+				+ ` <span class="t">${sample.span >= 240000 ? 'in 5 min' : 'since start'}</span>`;
+			live.className = 'v';
+		}
+	}
+
+	if (!official) {
 		return;
 	}
 
 	const withOi = [...bars].reverse().find(bar => bar.ballast);
 	if (!withOi) {
-		node.innerHTML = '<span class="na">no open interest yet</span>';
-		node.className = 'v';
+		official.innerHTML = '<span class="na">no row yet</span>';
+		official.className = 'v';
 		return;
 	}
 
 	const change = Math.round(withOi.ballast.change);
 	const tone = change > 0 ? 'ok' : change < 0 ? 'no' : 'near';
 	const sign = change > 0 ? '+' : '';
-	const word = change > 0 ? 'BNB added' : change < 0 ? 'BNB left' : 'BNB flat';
 	const received = withOi.ballast.received
 		? new Date(withOi.ballast.received).toTimeString().slice(0, 8)
 		: '--:--:--';
 
-	node.innerHTML = `<span class="t">arrived ${received}</span> `
-		+ `<span class="${tone}">${sign}${change}</span> <span class="say">${word}</span>`;
-	node.className = 'v';
+	official.innerHTML = `<span class="t">${withOi.time}</span> `
+		+ `<span class="${tone}">${sign}${change}</span> <span class="say">BNB</span>`
+		+ ` <span class="t">arrived ${received}</span>`;
+	official.className = 'v';
 }
 
 function centrePrice(chart, bars, prices) {

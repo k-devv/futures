@@ -1,6 +1,6 @@
 """
 ================================================================================
- ACCOUNT · trade.py  -  placing, protecting and closing real orders
+ ACCOUNT - trade.py  -  placing, protecting and closing real orders
 ================================================================================
  WHAT   : The only file allowed to send an order. Limit entries, market entries,
           stops, take-profits, cancels, close-position. Every call is signed and
@@ -35,7 +35,7 @@ except ImportError:                     # run as a script from this folder
 
 SYMBOL = "BNBUSDT"
 
-MAX_QTY = 0.05          # hard ceiling per order while this system is being proven
+MAX_QTY = 0.20          # ceiling per order: 0.19 BNB ~ KSh 100 target at 4 points
 TICK = 0.01             # PRICE_FILTER tickSize for BNBUSDT
 STEP = 0.01             # LOT_SIZE stepSize
 
@@ -228,11 +228,22 @@ def cancel_all(symbol=SYMBOL):
     how a flat account suddenly becomes a position overnight.
     """
     plain = signed("/fapi/v1/allOpenOrders", {"symbol": symbol}, method="DELETE")
+
+    # conditional orders are NOT removed by allOpenOrders. they must be cancelled
+    # one by one, or a leftover stop turns a flat account into a position later.
+    cancelled = []
     try:
-        algo = signed("/fapi/v1/algoOrder", {"symbol": symbol}, method="DELETE")
+        from account import algo_orders
+        for row in algo_orders(symbol):
+            try:
+                cancel_algo(row["algoId"], symbol)
+                cancelled.append(row["algoId"])
+            except Exception:
+                pass
     except Exception:
-        algo = None
-    return {"plain": plain, "algo": algo}
+        pass
+
+    return {"plain": plain, "algo": cancelled}
 
 
 def close_position(side, qty, symbol=SYMBOL):

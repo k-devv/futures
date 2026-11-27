@@ -94,7 +94,7 @@ addEventListener('DOMContentLoaded', () => {
 	render();
 	tick();
 	paintBalance();
-	setInterval(paintBalance, 15000);
+	setInterval(paintBalance, 2000);
 	setInterval(tick, 1000);
 
 	// the drawer: two buttons, one class, nothing else

@@ -1,6 +1,6 @@
 """
 ================================================================================
- ACCOUNT · account.py  -  reading the real Binance futures account
+ ACCOUNT - account.py  -  reading the real Binance futures account
 ================================================================================
  WHAT   : Signed reads of the live USDⓈ-M futures account: balance, positions,
           open orders, leverage, margin type, income. Nothing here places an
@@ -148,7 +148,9 @@ def positions(symbol=None):
             "symbol": row["symbol"],
             "amount": amount,
             "entry": float(row["entryPrice"]),
-            "unrealized": float(row["unRealizedProfit"]),
+            # /fapi/v2/account spells it unrealizedProfit, positionRisk spells it
+            # unRealizedProfit - accept either, never KeyError on a live position
+            "unrealized": float(row.get("unRealizedProfit", row.get("unrealizedProfit", 0))),
             "leverage": int(row["leverage"]),
             "side": "long" if amount > 0 else "short",
         })

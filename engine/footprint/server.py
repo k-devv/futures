@@ -283,6 +283,7 @@ def snapshot(limit=None):
 
     return {
         "symbol": tape.SYMBOL,
+        "liveOi": live_oi(),
         "levels": levels,
         "window": _window_of(window or 0),
         "bars": finished,
@@ -300,6 +301,81 @@ LIVE_TRADING = os.environ.get("LIVE_TRADING") == "1"
 _balance = {"at": 0, "value": None}
 
 
+# ------------------------------------------------- live open interest (5 s)
+#
+# THE SIGNAL SOURCE. Read this before changing anything here.
+#
+#   We trade the LIVE open interest, sampled from /fapi/v1/openInterest every
+#   5 seconds. It is what the checklist's first line shows and what the wake-up
+#   check uses to confirm a break.
+#
+#   The official 5m row from /futures/data/openInterestHist is NOT the trigger.
+#   Binance publishes it 1-3 minutes after the window closes, so using it means
+#   entering 2-5 minutes late - which is exactly what we stopped doing.
+#   The row is still fetched and shown as "LAST 5m ROW": it is the settled
+#   record for the log, never the gate for an entry.
+#
+#   liveOi.change5m = OI now - OI five minutes ago, from our own samples.
+#   Until five minutes of samples exist it is labelled "since start".
+_oi = {"samples": [], "at": 0}
+OI_POLL_SECONDS = 5
+OI_KEEP_MS = 30 * 60 * 1000
+
+
+def _oi_poll():
+    """
+    Poll /fapi/v1/openInterest every few seconds.
+
+    Binance publishes the historical OI series only per 5 minutes and one to
+    three minutes late, so during a bar there is no official number at all.
+    This fills that hole with a sample we take ourselves - weight 1, no history.
+    """
+    while True:
+        try:
+            url = f"https://fapi.binance.com/fapi/v1/openInterest?symbol={tape.SYMBOL}"
+            with urllib.request.urlopen(url, timeout=8) as response:
+                payload = json.loads(response.read())
+
+            now = int(time.time() * 1000)
+            sample = {"t": now, "oi": float(payload["openInterest"])}
+
+            with _lock:
+                _oi["samples"].append(sample)
+                _oi["at"] = now
+                cutoff = now - OI_KEEP_MS
+                _oi["samples"] = [row for row in _oi["samples"] if row["t"] >= cutoff]
+        except Exception:
+            pass
+
+        time.sleep(OI_POLL_SECONDS)
+
+
+def live_oi():
+    """
+    Open interest right now, and what it has done over the last five minutes.
+
+    Output {"value", "change5m", "at", "samples"} or None before the first poll
+    """
+    with _lock:
+        samples = list(_oi["samples"])
+
+    if not samples:
+        return None
+
+    now = samples[-1]
+    cutoff = now["t"] - 5 * 60 * 1000
+    older = [row for row in samples if row["t"] <= cutoff]
+
+    base = older[-1] if older else samples[0]
+    return {
+        "value": round(now["oi"], 2),
+        "change5m": round(now["oi"] - base["oi"], 2),
+        "at": now["t"],
+        "span": now["t"] - base["t"],
+        "samples": len(samples),
+    }
+
+
 def live_balance():
     """
     The real futures wallet and PnL, read through engine/ACCOUNT/account.py.
@@ -308,7 +384,7 @@ def live_balance():
     Cached 15 s: the header does not need signed calls every second.
     """
     now = time.time()
-    if _balance["value"] and now - _balance["at"] < 15:
+    if _balance["value"] and now - _balance["at"] < 2:
         return _balance["value"]
 
     try:
@@ -407,5 +483,6 @@ if __name__ == "__main__":
     seed_current()
     threading.Thread(target=run_tape, daemon=True).start()
     threading.Thread(target=_ballast_filler, daemon=True).start()
+    threading.Thread(target=_oi_poll, daemon=True).start()
     print(f"FOOTPRINT  http://127.0.0.1:{PORT}  (/api/footprint + app)", flush=True)
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

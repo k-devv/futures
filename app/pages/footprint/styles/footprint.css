@@ -36,6 +36,7 @@
 	background: var(--card);
 	height: var(--chart-h);        /* fixed: the chart never eats the page */
 	overflow: auto;
+	overflow-anchor: none;      /* stop the browser re-anchoring scroll on redraw */
 	scrollbar-width: none;
 }
 .fp-chart::-webkit-scrollbar { width: 0; height: 0; }

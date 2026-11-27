@@ -130,7 +130,12 @@ async function draw(element, state) {
 	}
 
 	const shown = bars.slice(-element.__fit);
+
+	// keep the reader's vertical place across a redraw, and never allow horizontal drift
+	const top = chart.scrollTop;
 	renderInto(chart, shown);
+	chart.scrollLeft = 0;
+	chart.scrollTop = top;
 
 	// centre the live price only when the set of bars actually changed
 	const key = shown.map(bar => bar.time).join(',');
